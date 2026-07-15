@@ -40,6 +40,8 @@ class DebugLogger {
     this.logStream = null;
     this.fileLoggingEnabled = false;
     this.fileLoggingPending = this.debugMode; // Track if we need to initialize file logging later
+    this._origConsole = null;
+    this._consoleIntercepted = false;
 
     // IMPORTANT: Do NOT call initializeFileLogging() here!
     // It uses app.getPath() which is unsafe before app.whenReady().
@@ -68,6 +70,8 @@ class DebugLogger {
       this.logStream = fs.createWriteStream(this.logFile, { flags: "a" });
       this.fileLoggingEnabled = true;
       this.fileLoggingPending = false;
+
+      this.interceptConsole();
 
       this.debug("Debug logging enabled", { logFile: this.logFile });
       this.info("System Info", {
@@ -174,6 +178,53 @@ class DebugLogger {
     }
   }
 
+  interceptConsole() {
+    if (this._consoleIntercepted) return;
+
+    const origLog = console.log.bind(console);
+    const origWarn = console.warn.bind(console);
+    const origError = console.error.bind(console);
+    const origInfo = console.info.bind(console);
+    this._origConsole = { log: origLog, warn: origWarn, error: origError, info: origInfo };
+
+    const self = this;
+    const makeInterceptor = (orig, level) =>
+      (...args) => {
+        orig(...args);
+        if (self.logStream) {
+          const timestamp = new Date().toISOString();
+          const text = args
+            .map((a) => {
+              if (a !== null && typeof a === "object") {
+                try {
+                  return JSON.stringify(self.serializeValue(a));
+                } catch {
+                  return String(a);
+                }
+              }
+              return String(a);
+            })
+            .join(" ");
+          self.logStream.write(`[${timestamp}] [${level.toUpperCase()}][console] ${text}\n`);
+        }
+      };
+
+    console.log = makeInterceptor(origLog, "debug");
+    console.info = makeInterceptor(origInfo, "info");
+    console.warn = makeInterceptor(origWarn, "warn");
+    console.error = makeInterceptor(origError, "error");
+    this._consoleIntercepted = true;
+  }
+
+  restoreConsole() {
+    if (!this._consoleIntercepted || !this._origConsole) return;
+    console.log = this._origConsole.log;
+    console.info = this._origConsole.info;
+    console.warn = this._origConsole.warn;
+    console.error = this._origConsole.error;
+    this._consoleIntercepted = false;
+  }
+
   write(level, message, meta, scope, source) {
     const normalized = normalizeLevel(level) || "info";
     if (!this.shouldLog(normalized)) return;
@@ -191,12 +242,14 @@ class DebugLogger {
     const metaText = this.formatMeta(meta);
     const logLine = metaText ? `${baseLine} ${metaText}\n` : `${baseLine}\n`;
 
+    // Use original console functions to avoid recursion when console is intercepted
+    const orig = this._origConsole || console;
     const consoleFn =
       normalized === "error" || normalized === "fatal"
-        ? console.error
+        ? orig.error
         : normalized === "warn"
-          ? console.warn
-          : console.log;
+          ? orig.warn
+          : orig.log;
 
     if (meta !== undefined) {
       consoleFn(`${levelTag}${scopeTag}${sourceTag} ${message}`, meta);
@@ -411,10 +464,11 @@ class DebugLogger {
 
   close() {
     if (this.logStream) {
-      this.log("📝 Debug logger closing");
+      this.log("Debug logger closing");
       this.logStream.end();
       this.logStream = null;
     }
+    this.restoreConsole();
   }
 }
 
