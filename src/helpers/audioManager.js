@@ -541,7 +541,7 @@ registerProcessor("pcm-collector-processor", PCMCollectorProcessor);
         this._localSpeechGateState = null;
       }
 
-      this.mediaRecorder = new MediaRecorder(micStream);
+      this.mediaRecorder = new MediaRecorder(micStream, { audioBitsPerSecond: 128000 });
       this.audioChunks = [];
       this._receivedAudioData = false;
       this.recordingStartTime = Date.now();

@@ -1,7 +1,7 @@
 {
   "DEFAULTS": {
     "threshold": 0.5,
-    "minSpeechDurationMs": 250,
+    "minSpeechDurationMs": 100,
     "minSilenceDurationMs": 200,
     "maxSpeechDurationS": 30,
     "speechPadMs": 100,

@@ -1,7 +1,9 @@
-const SILENCE_RMS_THRESHOLD = 0.002;
-const SPEECH_WINDOW_RMS_THRESHOLD = 0.003;
-const SPEECH_WINDOW_PEAK_THRESHOLD = 0.02;
-const STRONG_SPEECH_RMS_THRESHOLD = 0.006;
+// Thresholds calibrated for both close-mic headsets and far-field laptop mics
+// (AGC is disabled, so laptop mics produce significantly lower signal levels)
+const SILENCE_RMS_THRESHOLD = 0.0008;
+const SPEECH_WINDOW_RMS_THRESHOLD = 0.0015;
+const SPEECH_WINDOW_PEAK_THRESHOLD = 0.008;
+const STRONG_SPEECH_RMS_THRESHOLD = 0.003;
 
 export const createLocalSpeechGateState = () => ({
   peakRms: 0,

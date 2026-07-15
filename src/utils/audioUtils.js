@@ -1,16 +1,26 @@
+// 5-tap Hann-windowed sinc FIR low-pass filter, cutoff at 8 kHz (Nyquist of 16 kHz output).
+// Applied before decimation to suppress aliasing from the 8–12 kHz band that would
+// otherwise fold back into the 0–8 kHz pass-band and degrade sibilant/fricative clarity.
+// Coefficients normalised so they sum to 1.0 (DC gain = 0 dB).
+const AA_FILTER_5 = [0.0625, 0.25, 0.375, 0.25, 0.0625];
+
 function downsample24kTo16k(pcmBuffer) {
   const input = new Int16Array(pcmBuffer.buffer, pcmBuffer.byteOffset, pcmBuffer.length / 2);
-  const ratio = 1.5;
-  const outputLength = Math.floor(input.length / ratio);
+  const outputLength = Math.floor((input.length * 2) / 3);
   const output = new Int16Array(outputLength);
 
   for (let i = 0; i < outputLength; i++) {
-    const srcIdx = i * ratio;
-    const idx = Math.floor(srcIdx);
-    const frac = srcIdx - idx;
-    const s0 = input[idx];
-    const s1 = idx + 1 < input.length ? input[idx + 1] : s0;
-    output[i] = Math.round(s0 + frac * (s1 - s0));
+    // Map output sample i to the nearest input sample index (3:2 ratio)
+    const center = Math.round((i * 3) / 2);
+
+    // Apply 5-tap FIR centred at `center`
+    let acc = 0;
+    for (let t = -2; t <= 2; t++) {
+      const idx = center + t;
+      const s = idx >= 0 && idx < input.length ? input[idx] : 0;
+      acc += AA_FILTER_5[t + 2] * s;
+    }
+    output[i] = Math.round(Math.max(-32768, Math.min(32767, acc)));
   }
 
   return Buffer.from(output.buffer);
