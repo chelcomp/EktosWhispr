@@ -32,7 +32,7 @@ jobs:
 
       - name: Compile Windows System Audio Helper
         run: |
-          cl /O2 /nologo resources/windows-system-audio-helper.c /Fe:windows-system-audio-helper.exe ole32.lib mmdevapi.lib
+          cl /O2 /nologo resources/windows-system-audio-helper.c /Fe:windows-system-audio-helper.exe ole32.lib mmdevapi.lib uuid.lib
         shell: cmd
 
       - name: Verify binary
