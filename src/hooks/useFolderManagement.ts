@@ -99,8 +99,8 @@ export function useFolderManagement(): UseFolderManagementReturn {
           const notes = await initializeNotes(null, 50, initialFolderId);
           if (!isMountedRef.current) return;
           const presetNoteId = getActiveNoteIdValue();
-          if (!presetNoteId && notes.length > 0) {
-            setActiveNoteId(notes[0].id);
+          if (!presetNoteId) {
+            setActiveNoteId(null);
           }
         }
         prevFolderIdRef.current = initialFolderId;
@@ -125,7 +125,7 @@ export function useFolderManagement(): UseFolderManagementReturn {
         if (getActiveFolderIdValue() !== activeFolderId) return;
         const presetNoteId = getActiveNoteIdValue();
         if (!presetNoteId || !notes.some((n) => n.id === presetNoteId)) {
-          setActiveNoteId(notes.length > 0 ? notes[0].id : null);
+          setActiveNoteId(null);
         }
       } catch (err) {
         logger.warn(
