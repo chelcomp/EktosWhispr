@@ -197,8 +197,8 @@ export const MicrophoneSettings: React.FC<MicrophoneSettingsProps> = ({
           <input
             type="range"
             min={0.5}
-            max={3.0}
-            step={0.05}
+            max={8.0}
+            step={0.1}
             value={micGain}
             onChange={(e) => onMicGainChange(parseFloat(e.target.value))}
             className="flex-1 h-2 rounded-lg appearance-none cursor-pointer accent-primary"

@@ -987,7 +987,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   micNoiseSuppression: readBoolean("micNoiseSuppression", false),
   micGain: (() => {
     const v = parseFloat(isBrowser ? localStorage.getItem("micGain") || "1" : "1");
-    return isNaN(v) ? 1.0 : Math.max(0.5, Math.min(3.0, v));
+    return isNaN(v) ? 1.0 : Math.max(0.5, Math.min(8.0, v));
   })(),
 
   theme: (() => {
@@ -1486,7 +1486,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setSelectedMicDeviceId: createStringSetter("selectedMicDeviceId"),
   setMicNoiseSuppression: createBooleanSetter("micNoiseSuppression"),
   setMicGain: (value: number) => {
-    const clamped = Math.max(0.5, Math.min(3.0, value));
+    const clamped = Math.max(0.5, Math.min(8.0, value));
     if (isBrowser) localStorage.setItem("micGain", String(clamped));
     useSettingsStore.setState({ micGain: clamped });
   },

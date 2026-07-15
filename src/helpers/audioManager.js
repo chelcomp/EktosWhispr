@@ -47,6 +47,40 @@ const PCM_COLLECTOR_SAMPLE_RATE = 16000;
  * WAV ArrayBuffer that whisper.cpp / sherpa-onnx accept directly — no FFmpeg
  * decode step needed on the main process side.
  */
+// Peak normalization target: ~88% of Int16 max to leave headroom for rounding.
+const NORMALIZE_TARGET_PEAK = 29000;
+// Don't normalize if peak is below this — the gate should have filtered silence,
+// but keep this as a safety net to avoid amplifying pure noise.
+const NORMALIZE_MIN_PEAK = 500;
+
+/**
+ * Peak-normalize PCM chunks so the loudest sample reaches NORMALIZE_TARGET_PEAK.
+ * Applied post-recording so it doesn't affect live preview or gate detection.
+ * Built-in laptop mics often capture at 10–30% Windows volume; normalization
+ * ensures whisper always receives a well-levelled signal regardless of mic gain.
+ */
+function normalizePcmChunks(chunks) {
+  let peak = 0;
+  for (const chunk of chunks) {
+    for (let i = 0; i < chunk.length; i++) {
+      const abs = chunk[i] < 0 ? -chunk[i] : chunk[i];
+      if (abs > peak) peak = abs;
+    }
+  }
+  // Already at target or too quiet to normalize safely
+  if (peak < NORMALIZE_MIN_PEAK || peak >= NORMALIZE_TARGET_PEAK) return chunks;
+
+  const scale = NORMALIZE_TARGET_PEAK / peak;
+  return chunks.map((chunk) => {
+    const out = new Int16Array(chunk.length);
+    for (let i = 0; i < chunk.length; i++) {
+      const v = Math.round(chunk[i] * scale);
+      out[i] = v > 32767 ? 32767 : v < -32768 ? -32768 : v;
+    }
+    return out;
+  });
+}
+
 function buildWavFromPcmChunks(chunks) {
   const totalSamples = chunks.reduce((sum, c) => sum + c.length, 0);
   const dataBytes = totalSamples * 2;
@@ -586,7 +620,8 @@ registerProcessor("pcm-collector-processor", PCMCollectorProcessor);
 
         let audioBlob;
         if (hasPcm) {
-          const wavBuffer = buildWavFromPcmChunks(pcmChunks);
+          const normalizedChunks = normalizePcmChunks(pcmChunks);
+          const wavBuffer = buildWavFromPcmChunks(normalizedChunks);
           audioBlob = new Blob([wavBuffer], { type: "audio/wav" });
         } else {
           // Fallback: PCM collector unavailable — use WebM from MediaRecorder.
@@ -601,6 +636,7 @@ registerProcessor("pcm-collector-processor", PCMCollectorProcessor);
             blobType: audioBlob.type,
             source: hasPcm ? "pcm-direct" : "webm-fallback",
             pcmChunkCount: pcmChunks.length,
+            normalized: hasPcm,
           },
           "audio"
         );
