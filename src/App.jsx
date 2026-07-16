@@ -233,10 +233,19 @@ export default function App() {
         });
         console.log(`[Transform] LLM result: ${JSON.stringify(result?.slice(0, 120))}`);
         succeeded = !!result;
-        await window.electronAPI?.sendTransformResult?.(id, result || "");
+        await window.electronAPI?.sendTransformResult?.(
+          id,
+          result || "",
+          result ? null : `LLM returned empty (provider=${cfg.provider} model=${cfg.model})`
+        );
       } catch (err) {
         console.error(`[Transform] Error during LLM call: ${err.message}`);
-        await window.electronAPI?.sendTransformResult?.(id, "");
+        const cfg = selectResolvedLLMConfig(useSettingsStore.getState(), "dictationAgent");
+        await window.electronAPI?.sendTransformResult?.(
+          id,
+          "",
+          `${err.message} (provider=${cfg.provider} model=${cfg.model})`
+        );
       } finally {
         setIsTransforming(false);
         if (succeeded) playTransformDoneCue();

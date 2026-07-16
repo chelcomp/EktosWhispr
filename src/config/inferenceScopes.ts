@@ -40,6 +40,7 @@ export const INFERENCE_SCOPES = {
       customApiKey: "dictationAgentCustomApiKey",
       disableThinking: "dictationAgentDisableThinking",
     },
+    fallbackScope: "dictationCleanup",
   },
   noteFormatting: {
     storeKeys: {

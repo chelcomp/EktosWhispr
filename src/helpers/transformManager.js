@@ -98,14 +98,25 @@ class TransformManager {
       activeApp,
     });
 
+    // Save and clear clipboard so we can detect a successful Ctrl+C even when
+    // the selection is identical to what was already in the clipboard.
     const before = clipboard.readText();
-    await this._simulateCopy();
-    await sleep(200);
-    const selectedText = clipboard.readText();
+    clipboard.writeText("");
 
-    console.log(`[Transform] _execute id=${transform.id} beforeLength=${before?.length} selectedLength=${selectedText?.length} sameAsBefore=${selectedText === before}`);
-    if (!selectedText || selectedText === before) {
-      console.warn("[Transform] No text selected or clipboard unchanged — aborting");
+    await this._simulateCopy();
+
+    // Poll up to 800ms for the app to update the clipboard.
+    let selectedText = "";
+    for (let i = 0; i < 8; i++) {
+      await sleep(100);
+      selectedText = clipboard.readText();
+      if (selectedText) break;
+    }
+
+    console.log(`[Transform] _execute id=${transform.id} beforeLength=${before?.length} selectedLength=${selectedText?.length}`);
+    if (!selectedText) {
+      console.warn("[Transform] No text selected — aborting");
+      clipboard.writeText(before); // Restore original clipboard
       return;
     }
 

@@ -609,7 +609,8 @@ declare global {
       ) => () => void;
       sendTransformResult?: (
         transformId: string,
-        result: string
+        result: string,
+        error: string | null
       ) => Promise<{ success: boolean }>;
 
       // Note operations

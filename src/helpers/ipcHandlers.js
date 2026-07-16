@@ -6589,7 +6589,13 @@ class IPCHandlers {
       }
     });
 
-    ipcMain.handle("transform-result", async (_event, transformId, result) => {
+    ipcMain.handle("transform-result", async (_event, transformId, result, error) => {
+      if (error) {
+        console.error(`[Transform] Renderer error for id=${transformId}: ${error}`);
+        try {
+          debugLogger.error("Transform renderer error", { transformId, error }, "transform");
+        } catch (_) {}
+      }
       transformManager.handleResult(transformId, result);
       return { success: true };
     });
