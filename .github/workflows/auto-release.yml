@@ -23,10 +23,10 @@ jobs:
         with:
           node-version: "26"
 
-      - name: Bump offline prerelease number
+      - name: Bump patch version
         id: bump
         run: |
-          npm version prerelease --preid offline --no-git-tag-version
+          npm version patch --no-git-tag-version
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "Bumped to $NEW_VERSION"
@@ -37,5 +37,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json
           git commit -m "chore(release): ${{ steps.bump.outputs.new_version }}"
-          git tag "v${{ steps.bump.outputs.new_version }}"
-          git push origin main --follow-tags
+          git tag -a "v${{ steps.bump.outputs.new_version }}" -m "Release v${{ steps.bump.outputs.new_version }}"
+          git push origin main
+          git push origin "v${{ steps.bump.outputs.new_version }}"
