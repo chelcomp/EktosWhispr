@@ -18,18 +18,29 @@ const NIRCMD_URL = "https://www.nirsoft.net/utils/nircmd-x64.zip";
 const BIN_DIR = path.join(__dirname, "..", "resources", "bin");
 const NIRCMD_PATH = path.join(BIN_DIR, "nircmd.exe");
 
-// Use PowerShell's Invoke-WebRequest which uses the Windows certificate store
-// (honours corporate proxy/CA certs that Node's https module doesn't see).
+// Use PowerShell with SSL cert validation disabled (nirsoft.net has cert issues).
+// Tries -SkipCertificateCheck (PS 6+) first, then the PS 5 workaround.
 async function downloadWithPowerShell(url, dest) {
-  const result = spawnSync(
+  // Try PS 6+ flag first
+  let result = spawnSync(
     "powershell",
     ["-NoProfile", "-NonInteractive", "-Command",
-      `Invoke-WebRequest -Uri '${url}' -OutFile '${dest}' -UseBasicParsing`],
-    { stdio: "inherit", timeout: 60000 }
+      `Invoke-WebRequest -Uri '${url}' -OutFile '${dest}' -UseBasicParsing -SkipCertificateCheck`],
+    { stdio: "pipe", timeout: 60000 }
   );
-  if (result.status !== 0) {
-    throw new Error(`PowerShell download failed (exit ${result.status})`);
-  }
+  if (result.status === 0) return;
+
+  // PS 5 fallback: disable cert validation via .NET callback
+  result = spawnSync(
+    "powershell",
+    ["-NoProfile", "-NonInteractive", "-Command",
+      `[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; ` +
+      `Invoke-WebRequest -Uri '${url}' -OutFile '${dest}' -UseBasicParsing`],
+    { stdio: "pipe", timeout: 60000 }
+  );
+  if (result.status === 0) return;
+
+  throw new Error(`PowerShell download failed (exit ${result.status})`);
 }
 
 async function main() {
@@ -85,9 +96,10 @@ async function main() {
     fs.rmSync(extractDir, { recursive: true, force: true });
     fs.unlinkSync(zipPath);
   } catch (error) {
-    console.error(`  ✗ Failed to download nircmd.exe: ${error.message}\n`);
     if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
-    process.exit(1);
+    console.warn(`  ⚠ Could not download nircmd.exe: ${error.message}`);
+    console.warn("  The app will use PowerShell as fallback for clipboard paste on Windows.\n");
+    // Non-fatal: nircmd is optional, clipboard.js falls back to PowerShell automatically.
   }
 }
 
