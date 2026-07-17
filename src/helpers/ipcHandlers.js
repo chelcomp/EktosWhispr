@@ -4,6 +4,7 @@ const fs = require("fs");
 const os = require("os");
 const crypto = require("crypto");
 const debugLogger = require("./debugLogger");
+const { filterFillerWords } = require("./fillerWordFilter");
 const { BYOK_API_KEYS } = require("../config/secretKeys");
 const { classifyAndLog } = require("./networkErrors");
 const GnomeShortcutManager = require("./gnomeShortcut");
@@ -6147,6 +6148,13 @@ class IPCHandlers {
     // ── Local dictation preview (whisper.cpp / parakeet) ─────────────────────
     // Max audio retained for whisper re-transcription: 29s (whisper's hard limit is 30s)
     const MAX_PREVIEW_ACCUM_BYTES = 29 * 16000 * 2; // 29s × 16 kHz × 2 bytes (Int16)
+    // Parakeet (offline/non-streaming) re-transcribes this same growing buffer every
+    // preview cycle, but unlike whisper it shares a single sherpa-onnx server process
+    // with the real end-of-dictation transcription. A 29s buffer crosses parakeetServer's
+    // 15s single-segment limit and forces multi-round-trip decoding, which competes for
+    // the same server right when the user stops talking. Keep it under 15s so preview
+    // cycles stay cheap and don't delay the real transcription.
+    const MAX_PARAKEET_PREVIEW_ACCUM_BYTES = 14 * 16000 * 2; // 14s × 16 kHz × 2 bytes (Int16)
 
     let dictationPreviewMode = false;
     let dictationPreviewBuffer = [];     // Nvidia startup temp buffer only
@@ -6190,9 +6198,9 @@ class IPCHandlers {
       if (!dictationPreviewAccumBuffer.length) return;
       dictationPreviewTranscribing = true;
       try {
-        // Whisper path: re-transcribe ALL accumulated audio from the start.
-        // This overwrites (not appends) the preview, giving whisper full context
-        // and allowing early hallucinations to be self-corrected over time.
+        // Re-transcribe ALL accumulated audio from the start each cycle.
+        // This overwrites (not appends) the preview, giving the model full
+        // context and allowing early hallucinations/mistakes to self-correct.
         const pcm = Buffer.concat(dictationPreviewAccumBuffer);
         // Skip if essentially silent (RMS check on full buffer)
         const samples = new Int16Array(pcm.buffer, pcm.byteOffset, pcm.length / 2);
@@ -6204,40 +6212,51 @@ class IPCHandlers {
         if (Math.sqrt(sumSq / samples.length) < 0.001) return;
 
         const wav = pcm16ToWav(pcm);
-        const vadOptions = this._resolveWhisperVadOptions("dictation");
-        const result = await this.whisperManager.transcribeLocalWhisper(wav, {
-          model: dictationPreviewModel,
-          language: dictationPreviewLanguage || undefined,
-          initialPrompt: dictationPreviewInitialPrompt || undefined,
-          verboseJson: true,
-          ...vadOptions,
-        });
+        let text = "";
 
-        if (result?.success) {
-          const NO_SPEECH_THRESHOLD = 0.6;
-          let text;
-          if (Array.isArray(result.segments) && result.segments.length > 0) {
-            text = result.segments
-              .filter((s) => (s.no_speech_prob ?? 0) < NO_SPEECH_THRESHOLD)
-              .map((s) => s.text)
-              .join(" ")
-              .trim();
-          } else {
+        if (dictationPreviewProvider === "nvidia") {
+          const result = await this.parakeetManager.transcribeLocalParakeet(wav, {
+            model: dictationPreviewModel,
+          });
+          if (result?.success) {
             text = result.text?.trim() || "";
           }
-          if (text && !this.whisperManager.isHallucinatedText(text, dictationPreviewLanguage)) {
-            // Replace the entire preview (not append) — full retranscription result
-            this.windowManager.showTranscriptionPreview(text);
+        } else {
+          const vadOptions = this._resolveWhisperVadOptions("dictation");
+          const result = await this.whisperManager.transcribeLocalWhisper(wav, {
+            model: dictationPreviewModel,
+            language: dictationPreviewLanguage || undefined,
+            initialPrompt: dictationPreviewInitialPrompt || undefined,
+            verboseJson: true,
+            ...vadOptions,
+          });
+
+          if (result?.success) {
+            const NO_SPEECH_THRESHOLD = 0.6;
+            if (Array.isArray(result.segments) && result.segments.length > 0) {
+              text = result.segments
+                .filter((s) => (s.no_speech_prob ?? 0) < NO_SPEECH_THRESHOLD)
+                .map((s) => s.text)
+                .join(" ")
+                .trim();
+            } else {
+              text = result.text?.trim() || "";
+            }
           }
+        }
+
+        if (text && !this.whisperManager.isHallucinatedText(text, dictationPreviewLanguage)) {
+          // Replace the entire preview (not append) — full retranscription result
+          this.windowManager.showTranscriptionPreview(text);
         }
       } catch (error) {
         debugLogger.error("Dictation preview retranscription failed", { error: error.message }, "audio");
       } finally {
         dictationPreviewTranscribing = false;
       }
-    };
+    };;
 
-    ipcMain.handle("start-dictation-preview", async (_event, { provider, model, language, initialPrompt }) => {
+    ipcMain.handle("start-dictation-preview", async (_event, { provider, model, language, initialPrompt, streamingBeta }) => {
       resetDictationPreviewState();
       dictationPreviewMode = true;
       dictationPreviewSessionActive = true;
@@ -6248,12 +6267,12 @@ class IPCHandlers {
       dictationPreviewChunkCount = 0;
       this.windowManager.showTranscriptionPreview("");
       const gen = dictationPreviewGen;
-      if (provider === "nvidia" && this.parakeetManager?.supportsOnlineStreaming(model)) {
+      if (provider === "nvidia" && streamingBeta && this.parakeetManager?.supportsOnlineStreaming(model)) {
         try {
           const stream = await this.parakeetManager.createOnlineStream(model, {
             onUpdate: (text) => {
               if (gen === dictationPreviewGen && text) {
-                this.windowManager.showTranscriptionPreview(text);
+                this.windowManager.showTranscriptionPreview(filterFillerWords(text, language));
               }
             },
           });
@@ -6289,11 +6308,14 @@ class IPCHandlers {
       }
       dictationPreviewBuffer.push(pcm);
 
-      // Whisper path: accumulate all audio for full retranscription.
-      // Trim oldest chunks when total exceeds 29s (whisper's limit is 30s).
+      // Accumulate all audio for full retranscription, trimming oldest chunks once
+      // the buffer exceeds the provider's cap (whisper: 29s: parakeet: 14s — see
+      // MAX_PARAKEET_PREVIEW_ACCUM_BYTES above).
       dictationPreviewAccumBuffer.push(pcm);
       dictationPreviewAccumBytes += pcm.length;
-      while (dictationPreviewAccumBytes > MAX_PREVIEW_ACCUM_BYTES && dictationPreviewAccumBuffer.length > 1) {
+      const previewAccumCap =
+        dictationPreviewProvider === "nvidia" ? MAX_PARAKEET_PREVIEW_ACCUM_BYTES : MAX_PREVIEW_ACCUM_BYTES;
+      while (dictationPreviewAccumBytes > previewAccumCap && dictationPreviewAccumBuffer.length > 1) {
         dictationPreviewAccumBytes -= dictationPreviewAccumBuffer[0].length;
         dictationPreviewAccumBuffer.shift();
       }
@@ -6338,9 +6360,15 @@ class IPCHandlers {
         if (text && dictationPreviewSessionActive) {
           this.windowManager.showTranscriptionPreview(text);
         }
-      } else {
+      } else if (dictationPreviewProvider !== "nvidia") {
+        // One last full retranscription for the most accurate preview right
+        // before the real result replaces it.
         await transcribeDictationPreviewChunk();
       }
+      // Parakeet (offline, non-streaming): skip that extra pass — it shares a single
+      // sherpa-onnx server with the real end-of-dictation transcription, so re-running
+      // it here would delay the real result for a preview that's about to be replaced
+      // anyway.
       resetDictationPreviewState({ preserveSession: true });
       if (!dictationPreviewSessionActive) return { success: true };
       this.windowManager.holdTranscriptionPreview(options);

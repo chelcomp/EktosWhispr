@@ -199,6 +199,24 @@ function TranscriptionSection({
         : WHISPER_MODEL_INFO[selectedLocalTranscriptionModelId]?.name) ?? selectedLocalTranscriptionModelId
     : undefined;
 
+  const selectedParakeetModelSupportsStreaming =
+    PARAKEET_MODEL_INFO[parakeetModel]?.runtime === "online";
+
+  useEffect(() => {
+    if (
+      localTranscriptionProvider === "nvidia" &&
+      parakeetStreamingBeta &&
+      !selectedParakeetModelSupportsStreaming
+    ) {
+      setParakeetStreamingBeta(false);
+    }
+  }, [
+    localTranscriptionProvider,
+    parakeetStreamingBeta,
+    selectedParakeetModelSupportsStreaming,
+    setParakeetStreamingBeta,
+  ]);
+
   const transcriptionModes: InferenceModeOption[] = [
     {
       id: "providers",
@@ -318,7 +336,9 @@ function TranscriptionSection({
       {transcriptionMode === "local" && (
         <>
           {renderTranscriptionPicker("local")}
-          {localTranscriptionProvider === "nvidia" && renderParakeetStreamingToggle()}
+          {localTranscriptionProvider === "nvidia" &&
+            selectedParakeetModelSupportsStreaming &&
+            renderParakeetStreamingToggle()}
           {renderPreviewToggle()}
         </>
       )}
