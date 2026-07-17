@@ -440,10 +440,11 @@ async function startApp() {
   const needsPostMigrationOnboarding = postMigrationDetector.isReturningFromOldBundle();
   const startMinimized = environmentManager.getStartMinimized() && !needsPostMigrationOnboarding;
   if (debugLogger) debugLogger.info("Start minimized", { enabled: startMinimized, needsPostMigrationOnboarding });
+  // Must be set BEFORE createMainWindow() — its ready-to-show handler decides
+  // whether to auto-show the window, and can fire before createMainWindow()
+  // resolves, racing a post-hoc mainWindow.minimize() call.
+  windowManager.setStartMinimized(startMinimized);
   await windowManager.createMainWindow();
-  if (startMinimized && windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
-    windowManager.mainWindow.minimize();
-  }
   // Control panel and agent window are created on first use (lazy) to reduce startup RAM.
   // All tray / hotkey / second-instance code paths already call createControlPanelWindow()
   // and toggleAgentOverlay() handles lazy creation internally.

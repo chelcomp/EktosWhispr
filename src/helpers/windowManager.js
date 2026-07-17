@@ -44,6 +44,7 @@ class WindowManager {
     this.winPushState = null;
     this._cachedActivationMode = "tap";
     this._floatingIconAutoHide = false;
+    this._startMinimized = false;
     this._agentAnimationState = null;
     this._panelStartPosition = "bottom-right";
     this._isDictatingToggle = false;
@@ -525,6 +526,10 @@ class WindowManager {
 
   setFloatingIconAutoHide(enabled) {
     this._floatingIconAutoHide = Boolean(enabled);
+  }
+
+  setStartMinimized(enabled) {
+    this._startMinimized = Boolean(enabled);
   }
 
   setPanelStartPosition(position) {
@@ -1122,7 +1127,8 @@ class WindowManager {
         this.mainWindow &&
         !this.mainWindow.isDestroyed() &&
         !this.mainWindow.isVisible() &&
-        !this._floatingIconAutoHide
+        !this._floatingIconAutoHide &&
+        !this._startMinimized
       ) {
         this.showDictationPanel();
       }
@@ -1131,7 +1137,7 @@ class WindowManager {
     this.mainWindow.once("ready-to-show", () => {
       clearTimeout(showTimeout);
       this.enforceMainWindowOnTop();
-      if (!this.mainWindow.isVisible() && !this._floatingIconAutoHide) {
+      if (!this.mainWindow.isVisible() && !this._floatingIconAutoHide && !this._startMinimized) {
         if (typeof this.mainWindow.showInactive === "function") {
           this.mainWindow.showInactive();
         } else {
