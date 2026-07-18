@@ -124,8 +124,12 @@ function dictationAgentReachable(settings) {
 }
 
 function resolveReasoningRoute(text, settings, agentName, voiceAgentRequested) {
+  // Use getEffectiveCleanupModel() (not settings.cleanupModel) so local cleanup mode is
+  // seen as reachable: in local mode the selected model lives in settings.localModel, and
+  // settings.cleanupModel stays empty. Must match the reachability gate in processTranscription.
+  const effectiveCleanupModel = getEffectiveCleanupModel();
   const cleanupReachable =
-    !!settings.useCleanupModel && (!!settings.cleanupModel?.trim() || isCloudCleanupMode());
+    !!settings.useCleanupModel && (!!effectiveCleanupModel?.trim() || isCloudCleanupMode());
   const isCloudAgent = isCloudDictationAgentMode();
   const isSelfHostedAgent =
     settings.dictationAgentMode === "self-hosted" && !!settings.dictationAgentRemoteUrl?.trim();
@@ -137,7 +141,7 @@ function resolveReasoningRoute(text, settings, agentName, voiceAgentRequested) {
   // available model pool: cleanup model → chat agent model.
   if (voiceAgentRequested && !agentModel && settings.useDictationAgent) {
     if (cleanupReachable) {
-      agentModel = settings.cleanupModel?.trim() || "";
+      agentModel = effectiveCleanupModel?.trim() || "";
       agentProvider = settings.cleanupProvider?.trim() || agentProvider;
     } else if (settings.chatAgentModel?.trim()) {
       agentModel = settings.chatAgentModel.trim();
@@ -226,6 +230,7 @@ class AudioManager {
     this.onError = null;
     this.onTranscriptionComplete = null;
     this.onPartialTranscript = null;
+    this.onCleanupPartial = null;
     this.cachedApiKey = null;
     this.cachedApiKeyProvider = null;
 
@@ -400,12 +405,14 @@ registerProcessor("pcm-collector-processor", PCMCollectorProcessor);
     onTranscriptionComplete,
     onPartialTranscript,
     onStreamingCommit,
+    onCleanupPartial,
   }) {
     this.onStateChange = onStateChange;
     this.onError = onError;
     this.onTranscriptionComplete = onTranscriptionComplete;
     this.onPartialTranscript = onPartialTranscript;
     this.onStreamingCommit = onStreamingCommit;
+    this.onCleanupPartial = onCleanupPartial;
   }
 
   setSkipReasoning(skip) {
@@ -529,6 +536,39 @@ registerProcessor("pcm-collector-processor", PCMCollectorProcessor);
       logger.debug("Microphone driver pre-warmed", {}, "audio");
     } catch (e) {
       logger.debug("Mic driver warmup failed (non-critical)", { error: e.message }, "audio");
+    }
+  }
+
+  // The on-device llama-server model to pre-load, or null when the upcoming
+  // reasoning step won't use one (disabled, or a cloud/LAN/self-hosted mode). In
+  // "local" mode both cleanup and the dictation agent share settings.localModel.
+  _localReasoningModelToWarm(settings, voiceAgentRequested) {
+    const localModel = settings.localModel?.trim();
+    if (!localModel) return null;
+    const agentLocal = !!settings.useDictationAgent && settings.dictationAgentMode === "local";
+    // The voice-agent hotkey always routes to the agent, never cleanup.
+    if (voiceAgentRequested) return agentLocal ? localModel : null;
+    const cleanupLocal = !!settings.useCleanupModel && settings.cleanupMode === "local";
+    // Normal dictation: cleanup is the common path, but a wake word can route to
+    // the agent — either being local means the shared local model will be needed.
+    return cleanupLocal || agentLocal ? localModel : null;
+  }
+
+  // Kick off loading the local reasoning model into VRAM the moment recording
+  // starts, so the cleanup/agent step after the user releases the key skips the
+  // ~4s cold start (llama-server otherwise lazy-loads on first use, and unloads
+  // after a 5-min idle). Fire-and-forget and idempotent — llamaServerStart shares
+  // the in-flight startup or returns the ready server if the real reasoning call
+  // arrives first, so it never restarts a running server.
+  warmupReasoningServer() {
+    try {
+      if (typeof window === "undefined" || !window.electronAPI?.llamaServerStart) return;
+      const model = this._localReasoningModelToWarm(getSettings(), this.voiceAgentRequested);
+      if (!model) return;
+      logger.debug("Pre-warming local reasoning server", { model }, "reasoning");
+      window.electronAPI.llamaServerStart(model).catch(() => {});
+    } catch {
+      // Warmup is best-effort; the lazy start on the real call still works.
     }
   }
 
@@ -661,7 +701,9 @@ registerProcessor("pcm-collector-processor", PCMCollectorProcessor);
         }
 
         this.teardownSpeechGate();
-        this.cleanupPreview({ showCleanup: this.shouldShowPreviewCleanupState() });
+        const stopPreviewResult = this.cleanupPreview({
+          showCleanup: this.shouldShowPreviewCleanupState(),
+        });
 
         this.isRecording = false;
         this.isProcessing = true;
@@ -724,7 +766,7 @@ registerProcessor("pcm-collector-processor", PCMCollectorProcessor);
           return;
         }
 
-        await this.processAudio(audioBlob, { durationSeconds });
+        await this.processAudio(audioBlob, { durationSeconds, stopPreviewResult });
 
         this._scheduleStreamRelease();
       };
@@ -1006,7 +1048,12 @@ registerProcessor("pcm-collector-processor", PCMCollectorProcessor);
       if (useLocalWhisper) {
         if (localProvider === "nvidia") {
           activeModel = parakeetModel;
-          result = await this.processWithLocalParakeet(audioBlob, parakeetModel, metadata);
+          const streamingText = await this._resolveStreamingParakeetText(settings, metadata);
+          if (streamingText) {
+            result = await this._buildStreamingParakeetResult(streamingText);
+          } else {
+            result = await this.processWithLocalParakeet(audioBlob, parakeetModel, metadata);
+          }
         } else {
           activeModel = whisperModel;
           result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
@@ -1171,6 +1218,52 @@ registerProcessor("pcm-collector-processor", PCMCollectorProcessor);
         throw new Error(`Local Whisper failed: ${error.message}`);
       }
     }
+  }
+
+  // When NVIDIA real-time streaming preview is active, the online stream's
+  // transcript is already finalized at stop time (see stop-dictation-preview).
+  // Reuse it as the paste result instead of paying a full offline re-transcription
+  // of the whole clip. Returns "" when unavailable so the caller falls back to
+  // the offline path (streaming beta off, preview off, model without an online
+  // runtime, or an empty/failed stream).
+  async _resolveStreamingParakeetText(settings, metadata) {
+    if (
+      !settings.parakeetStreamingBeta ||
+      !settings.showTranscriptionPreview ||
+      !metadata?.stopPreviewResult
+    ) {
+      return "";
+    }
+    try {
+      const res = await metadata.stopPreviewResult;
+      const text = res?.streamingText;
+      return typeof text === "string" ? text.trim() : "";
+    } catch {
+      return "";
+    }
+  }
+
+  // Wraps the finalized streaming transcript in the same result shape the offline
+  // parakeet path produces, running cleanup/agent routing (a no-op when disabled)
+  // so both paths behave identically downstream.
+  async _buildStreamingParakeetResult(rawText) {
+    if (this.isDictionaryEcho(rawText)) {
+      throw new Error("No audio detected");
+    }
+    const timings = { transcriptionProcessingDurationMs: 0 };
+    const reasoningStart = performance.now();
+    const text = await this.processTranscription(rawText, "local-parakeet-live");
+    timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
+    if (text === null || text === undefined) {
+      throw new Error("No text transcribed");
+    }
+    return {
+      success: true,
+      text: text || rawText,
+      rawText,
+      source: "local-parakeet-live",
+      timings,
+    };
   }
 
   async processWithLocalParakeet(audioBlob, model = "parakeet-tdt-0.6b-v3", metadata = {}) {
@@ -1365,7 +1458,13 @@ registerProcessor("pcm-collector-processor", PCMCollectorProcessor);
     const startTime = Date.now();
 
     try {
-      const result = await ReasoningService.processText(text, model, agentName, config);
+      const result = await ReasoningService.processTextStreamed(
+        text,
+        model,
+        agentName,
+        config,
+        (partialText) => this.onCleanupPartial?.(partialText)
+      );
 
       const processingTime = Date.now() - startTime;
 
@@ -3178,7 +3277,11 @@ registerProcessor("pcm-collector-processor", PCMCollectorProcessor);
       window.electronAPI?.dismissDictationPreview?.();
       return;
     }
-    window.electronAPI?.stopDictationPreview?.({ showCleanup });
+    // Return the promise so onstop can reuse the finalized streaming transcript
+    // (if any) as the paste result. Never rejects — normalize to a safe shape so
+    // the degenerate-recording path can ignore it without an unhandled rejection.
+    const stopPromise = window.electronAPI?.stopDictationPreview?.({ showCleanup });
+    return Promise.resolve(stopPromise).catch(() => ({ success: false, streamingText: "" }));
   }
 
   cleanupStreamingAudio() {

@@ -24,6 +24,7 @@ import { getAllReasoningModels, getBatchTranscriptionModel } from "../../models/
 import {
   useSettingsStore,
   selectIsCloudCleanupMode,
+  selectEffectiveCleanupModel,
   selectResolvedUploadTranscription,
   getSettings,
 } from "../../stores/settingsStore";
@@ -109,9 +110,7 @@ export default function UploadAudioView({ onNoteCreated, onOpenSettings }: Uploa
   const preferredLanguage = useSettingsStore((s) => s.preferredLanguage);
   const customDictionary = useSettingsStore((s) => s.customDictionary);
   const isCloudCleanup = useSettingsStore(selectIsCloudCleanupMode);
-  const effectiveCleanupModel = useSettingsStore((s) =>
-    selectIsCloudCleanupMode(s) ? "" : s.cleanupModel
-  );
+  const effectiveCleanupModel = useSettingsStore(selectEffectiveCleanupModel);
   const useCleanupModel = useSettingsStore((s) => s.useCleanupModel);
 
   // Mode-aware file size validation

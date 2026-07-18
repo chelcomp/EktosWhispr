@@ -341,6 +341,7 @@ export default function TranscriptionModelPicker({
   const ensureValidCloudSelectionRef = useRef<(() => void) | null>(null);
   const selectedLocalModelRef = useRef(selectedLocalModel);
   const onLocalModelSelectRef = useRef(onLocalModelSelect);
+  const selectedLocalProviderRef = useRef(selectedLocalProvider);
 
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
   const colorScheme: ColorScheme = variant === "settings" ? "purple" : "blue";
@@ -362,6 +363,9 @@ export default function TranscriptionModelPicker({
   useEffect(() => {
     onLocalModelSelectRef.current = onLocalModelSelect;
   }, [onLocalModelSelect]);
+  useEffect(() => {
+    selectedLocalProviderRef.current = selectedLocalProvider;
+  }, [selectedLocalProvider]);
 
   const validateAndSelectModel = useCallback((loadedModels: LocalModel[]) => {
     const current = selectedLocalModelRef.current;
@@ -385,7 +389,13 @@ export default function TranscriptionModelPicker({
       const result = await window.electronAPI?.listWhisperModels();
       if (result?.success) {
         setLocalModels(result.models);
-        validateAndSelectModel(result.models);
+        // Only auto-fix the committed selection when whisper is the actually
+        // active provider — otherwise this fires while merely browsing the
+        // OpenAI tab (committed provider still nvidia) and stomps parakeetModel
+        // with a whisper model id, see handleLocalProviderChange comment above.
+        if (selectedLocalProviderRef.current !== "nvidia") {
+          validateAndSelectModel(result.models);
+        }
       }
     } catch (error) {
       logger.error("Failed to load models", { error }, "models");
@@ -613,7 +623,9 @@ export default function TranscriptionModelPicker({
             const result = await window.electronAPI?.listWhisperModels();
             if (result?.success) {
               setLocalModels(result.models);
-              validateAndSelectModel(result.models);
+              if (selectedLocalProviderRef.current !== "nvidia") {
+                validateAndSelectModel(result.models);
+              }
             }
           });
         },

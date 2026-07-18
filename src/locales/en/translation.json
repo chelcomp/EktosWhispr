@@ -1910,7 +1910,36 @@
       },
       "localModel": {
         "sharedNotice": "Using shared Local Model configuration — select model and GPU in the Local Model section",
-        "description": "Choose which local AI model powers all local inference scopes"
+        "description": "Choose which local AI model powers all local inference scopes",
+        "params": {
+          "title": "Generation Parameters",
+          "description": "Manual sampling settings applied to every local model, regardless of which one is selected.",
+          "reset": "Reset to defaults",
+          "temperature": {
+            "label": "Temperature",
+            "description": "Higher values make output more random; lower values more focused and deterministic."
+          },
+          "topP": {
+            "label": "Top P",
+            "description": "Nucleus sampling — considers tokens within the top cumulative probability mass."
+          },
+          "topK": {
+            "label": "Top K",
+            "description": "Limits sampling to the K most likely tokens. 0 disables the limit."
+          },
+          "minP": {
+            "label": "Min P",
+            "description": "Discards tokens below this fraction of the top token's probability."
+          },
+          "repeatPenalty": {
+            "label": "Repeat Penalty",
+            "description": "Penalizes repeated tokens. 1.0 disables the penalty; higher reduces repetition."
+          },
+          "maxTokens": {
+            "label": "Max Tokens",
+            "description": "Maximum number of tokens the model may generate in a single response."
+          }
+        }
       }
     },
     "noteFormatting": {
@@ -2137,7 +2166,8 @@
         "gemma_gemma_4_e4b_it_q4_k_m": "Google's latest multimodal, strong reasoning",
         "gemma_gemma_4_e2b_it_q4_k_m": "Google's compact Gemma 4, fast and efficient",
         "gemma_gemma_3_12b_it_q4_k_m": "Google's mid-range model, strong reasoning",
-        "gemma_gemma_3_1b_it_q4_k_m": "Ultra-fast Google model, best for short dictation cleanup"
+        "gemma_gemma_3_1b_it_q4_k_m": "Ultra-fast Google model, best for short dictation cleanup",
+        "gemma_gemma_2_9b_it_q4_k_m": "Google's Gemma 2 instruct model, high quality"
       }
     }
   },

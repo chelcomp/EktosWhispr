@@ -174,9 +174,9 @@ function useSettingsInternal() {
     localTranscriptionProvider,
     whisperModel,
     parakeetModel,
-    cleanupProvider,
-    cleanupModel,
-    dictationAgentProvider,
+    cleanupMode,
+    localModel,
+    dictationAgentMode,
     dictationAgentModel,
   } = store;
 
@@ -184,15 +184,20 @@ function useSettingsInternal() {
     if (typeof window === "undefined" || !window.electronAPI?.syncStartupPreferences) return;
 
     const model = localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel;
+    // Local cleanup uses the shared Local Model (localModel); cleanupModel stays empty and
+    // the resolved provider is the model family (e.g. "qwen"), never "local" — so key the
+    // local-cleanup pre-warm off cleanupMode, not the provider. Mirrors getEffectiveCleanupModel().
     window.electronAPI
       .syncStartupPreferences({
         useLocalWhisper,
         localTranscriptionProvider,
         model: model || undefined,
-        cleanupProvider,
-        cleanupModel: cleanupProvider === "local" ? cleanupModel : undefined,
-        dictationAgentProvider,
-        dictationAgentModel: dictationAgentProvider === "local" ? dictationAgentModel : undefined,
+        cleanupMode,
+        cleanupModel: cleanupMode === "local" ? localModel || undefined : undefined,
+        dictationAgentMode,
+        // Local dictation agent also uses the shared Local Model (dictationAgentModel stays
+        // empty); gate on the mode, same as cleanup above.
+        dictationAgentModel: dictationAgentMode === "local" ? localModel || undefined : undefined,
       })
       .catch((err) =>
         logger.warn(
@@ -206,9 +211,9 @@ function useSettingsInternal() {
     localTranscriptionProvider,
     whisperModel,
     parakeetModel,
-    cleanupProvider,
-    cleanupModel,
-    dictationAgentProvider,
+    cleanupMode,
+    localModel,
+    dictationAgentMode,
     dictationAgentModel,
   ]);
 

@@ -91,6 +91,34 @@
       "downloadUrl": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11.tar.bz2",
       "extractDir": "sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-560ms-int8-2026-06-11",
       "descriptionKey": "models.descriptions.parakeet.nemotron_3_5_asr_streaming_0_6b"
+    },
+    "nemotron-3.5-asr-streaming-0.6b-1120ms": {
+      "name": "Nemotron 3.5 ASR Streaming 0.6B (1120ms)",
+      "description": "Multilingual streaming ASR, larger 1120ms context window (higher accuracy, more latency)",
+      "size": "650MB",
+      "sizeMb": 650,
+      "language": "multilingual",
+      "supportedLanguages": [
+        "en",
+        "es",
+        "fr",
+        "it",
+        "pt",
+        "nl",
+        "de",
+        "tr",
+        "ru",
+        "ar",
+        "hi",
+        "ja",
+        "ko",
+        "vi",
+        "uk"
+      ],
+      "runtime": "online",
+      "downloadUrl": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-1120ms-int8-2026-06-11.tar.bz2",
+      "extractDir": "sherpa-onnx-nemotron-3.5-asr-streaming-0.6b-1120ms-int8-2026-06-11",
+      "descriptionKey": "models.descriptions.parakeet.nemotron_3_5_asr_streaming_0_6b"
     }
   },
   "diarizationModels": {
@@ -643,7 +671,7 @@
         },
         {
           "id": "qwen2.5-1.5b-instruct-q5_k_m",
-          "name": "Qwen2.5 1.5B",
+          "name": "Qwen2.5 1.5B Instruct",
           "size": "1.3GB",
           "sizeBytes": 1395864371,
           "description": "Small model, good for basic tasks",
@@ -655,7 +683,7 @@
         },
         {
           "id": "qwen2.5-3b-instruct-q5_k_m",
-          "name": "Qwen2.5 3B",
+          "name": "Qwen2.5 3B Instruct",
           "size": "2.4GB",
           "sizeBytes": 2620055552,
           "description": "Balanced model for general use",
@@ -667,7 +695,7 @@
         },
         {
           "id": "qwen2.5-7b-instruct-q4_k_m",
-          "name": "Qwen2.5 7B",
+          "name": "Qwen2.5 7B Instruct",
           "size": "4.7GB",
           "sizeBytes": 5025128858,
           "description": "Large model with high quality (Q4_K_M)",
@@ -707,7 +735,7 @@
       "models": [
         {
           "id": "llama-3.2-1b-instruct-q4_k_m",
-          "name": "Llama 3.2 1B",
+          "name": "Llama 3.2 1B Instruct",
           "size": "0.8GB",
           "sizeBytes": 847249408,
           "description": "Tiny model for edge devices",
@@ -719,7 +747,7 @@
         },
         {
           "id": "llama-3.2-3b-instruct-q4_k_m",
-          "name": "Llama 3.2 3B",
+          "name": "Llama 3.2 3B Instruct",
           "size": "2.0GB",
           "sizeBytes": 2168958976,
           "description": "Small but capable multilingual model",
@@ -731,7 +759,7 @@
         },
         {
           "id": "llama-3.1-8b-instruct-q4_k_m",
-          "name": "Llama 3.1 8B",
+          "name": "Llama 3.1 8B Instruct",
           "size": "4.9GB",
           "sizeBytes": 5282717696,
           "description": "Powerful model with great performance",
@@ -792,6 +820,18 @@
           "contextLength": 131072,
           "hfRepo": "bartowski/google_gemma-3-4b-it-GGUF",
           "descriptionKey": "models.descriptions.local.gemma_gemma_3_4b_it_q4_k_m"
+        },
+        {
+          "id": "gemma-2-9b-it-q4_k_m",
+          "name": "Gemma 2 9B",
+          "size": "5.8GB",
+          "sizeBytes": 5761057024,
+          "description": "Google's Gemma 2 instruct model, high quality",
+          "fileName": "gemma-2-9b-it-Q4_K_M.gguf",
+          "quantization": "q4_k_m",
+          "contextLength": 8192,
+          "hfRepo": "bartowski/gemma-2-9b-it-GGUF",
+          "descriptionKey": "models.descriptions.local.gemma_gemma_2_9b_it_q4_k_m"
         },
         {
           "id": "gemma-3-1b-it-q4_k_m",

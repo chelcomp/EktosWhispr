@@ -2017,6 +2017,15 @@ class IPCHandlers {
       return micMuteManager.setMuted(!!muted);
     });
 
+    ipcMain.handle("get-mic-muted", async () => {
+      return micMuteManager.getMuted();
+    });
+
+    ipcMain.handle("warmup-mic-mute-helper", async () => {
+      await micMuteManager.warmUp();
+      return { success: true };
+    });
+
     ipcMain.handle("get-last-target-app-name", () => {
       return activeAppCapture.getLastAppName();
     });
@@ -2348,11 +2357,23 @@ class IPCHandlers {
         const vulkanStatus = this._llamaVulkanManager.getStatus();
         const vulkanReady = !!vulkanStatus.downloaded;
 
+        if (!this._llamaCudaManager) {
+          const LlamaCudaManager = require("./llamaCudaManager");
+          this._llamaCudaManager = new LlamaCudaManager();
+        }
+        const llamaCudaReady = !!this._llamaCudaManager.isDownloaded();
+
         const whisperMode = process.env.WHISPER_GPU_MODE || "auto";
         const llamaMode = process.env.LLAMA_GPU_MODE || "auto";
 
         const resolvedWhisper = resolveWhisperGpuMode({ mode: whisperMode, hasNvidia, cudaReady });
-        const resolvedLlama = resolveLlamaGpuMode({ mode: llamaMode, hasNvidia, hasIntel, vulkanReady });
+        const resolvedLlama = resolveLlamaGpuMode({
+          mode: llamaMode,
+          hasNvidia,
+          hasIntel,
+          vulkanReady,
+          cudaReady: llamaCudaReady,
+        });
 
         return {
           whisperMode,
@@ -2365,6 +2386,7 @@ class IPCHandlers {
           hasIntel,
           cudaReady,
           vulkanReady,
+          llamaCudaReady,
           nvidiaName: nvidiaInfo.gpuName || null,
           intelName: intelInfo.gpuName || null,
         };
@@ -2381,6 +2403,7 @@ class IPCHandlers {
           hasIntel: false,
           cudaReady: false,
           vulkanReady: false,
+          llamaCudaReady: false,
           nvidiaName: null,
           intelName: null,
         };
@@ -2411,7 +2434,6 @@ class IPCHandlers {
       await this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
 
       const modelManager = require("./modelManagerBridge").default;
-      modelManager.serverManager.cachedServerBinaryPaths = null;
       await modelManager.stopServer().catch(() => {});
       return { success: true };
     });
@@ -2671,7 +2693,12 @@ class IPCHandlers {
       const gpuInfo = await detectNvidiaGpu();
       const ws = this.parakeetManager?.serverManager?.wsServer;
       return {
-        cudaAvailable: ws ? ws.isCudaBinaryAvailable() : false,
+        // Not model-specific: true if CUDA is available for either runtime.
+        // Missing per-model CUDA binaries fall back to CPU transparently
+        // (see ParakeetWsServer.getWsBinaryPath).
+        cudaAvailable: ws
+          ? ws.isCudaBinaryAvailable("offline") || ws.isCudaBinaryAvailable("online")
+          : false,
         cudaEnabled: process.env.SHERPA_ONNX_CUDA_ENABLED === "true",
         gpuInfo,
       };
@@ -2679,7 +2706,7 @@ class IPCHandlers {
 
     ipcMain.handle("enable-cuda-parakeet", async () => {
       const ws = this.parakeetManager?.serverManager?.wsServer;
-      if (!ws?.isCudaBinaryAvailable()) {
+      if (!ws?.isCudaBinaryAvailable("offline") && !ws?.isCudaBinaryAvailable("online")) {
         return {
           success: false,
           error: "CUDA binary not found. Run: npm run download:sherpa-onnx:cuda",
@@ -3617,13 +3644,15 @@ class IPCHandlers {
         });
       }
 
-      // TODO: drop legacy REASONING_PROVIDER / LOCAL_REASONING_MODEL clears once
-      // the read fallback is removed (~2 releases after this lands).
-      if (prefs.cleanupProvider === "local" && prefs.cleanupModel) {
+      // Local cleanup mode keeps its model in the shared localModel (the renderer sends it as
+      // prefs.cleanupModel); its resolved provider is the model family, never "local", so gate on
+      // the mode. TODO: drop legacy REASONING_PROVIDER / LOCAL_REASONING_MODEL clears once the
+      // read fallback is removed (~2 releases after this lands).
+      if (prefs.cleanupMode === "local" && prefs.cleanupModel) {
         setVars.CLEANUP_PROVIDER = "local";
         setVars.LOCAL_CLEANUP_MODEL = prefs.cleanupModel;
         clearVars.push("REASONING_PROVIDER", "LOCAL_REASONING_MODEL");
-      } else if (prefs.cleanupProvider && prefs.cleanupProvider !== "local") {
+      } else if (prefs.cleanupMode && prefs.cleanupMode !== "local") {
         clearVars.push(
           "CLEANUP_PROVIDER",
           "LOCAL_CLEANUP_MODEL",
@@ -3632,12 +3661,14 @@ class IPCHandlers {
         );
       }
 
+      // Same as cleanup: local dictation agent resolves to the shared localModel (the renderer
+      // sends it as prefs.dictationAgentModel) and its provider is the model family, so gate on mode.
       const dictationAgentLocal =
-        prefs.dictationAgentProvider === "local" && prefs.dictationAgentModel;
+        prefs.dictationAgentMode === "local" && prefs.dictationAgentModel;
       if (dictationAgentLocal) {
         setVars.DICTATION_AGENT_PROVIDER = "local";
         setVars.LOCAL_DICTATION_AGENT_MODEL = prefs.dictationAgentModel;
-      } else if (prefs.dictationAgentProvider && prefs.dictationAgentProvider !== "local") {
+      } else if (prefs.dictationAgentMode && prefs.dictationAgentMode !== "local") {
         clearVars.push("DICTATION_AGENT_PROVIDER", "LOCAL_DICTATION_AGENT_MODEL");
       }
 
@@ -3647,8 +3678,8 @@ class IPCHandlers {
       const cleanupNeedsLocal = setVars.CLEANUP_PROVIDER === "local";
       const dictationAgentNeedsLocal = setVars.DICTATION_AGENT_PROVIDER === "local";
       if (
-        prefs.cleanupProvider &&
-        prefs.cleanupProvider !== "local" &&
+        prefs.cleanupMode &&
+        prefs.cleanupMode !== "local" &&
         !cleanupNeedsLocal &&
         !dictationAgentNeedsLocal
       ) {
@@ -3822,7 +3853,6 @@ class IPCHandlers {
         if (result.success) {
           process.env.LLAMA_VULKAN_ENABLED = "true";
           delete process.env.LLAMA_GPU_BACKEND;
-          modelManager.serverManager.cachedServerBinaryPaths = null;
           await this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
           // Stop server so next inference picks up the new Vulkan binary
           await modelManager.stopServer().catch(() => {});
@@ -3861,7 +3891,88 @@ class IPCHandlers {
 
         delete process.env.LLAMA_VULKAN_ENABLED;
         delete process.env.LLAMA_GPU_BACKEND;
-        modelManager.serverManager.cachedServerBinaryPaths = null;
+        this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
+
+        return result;
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("get-llama-cuda-status", async () => {
+      try {
+        if (!this._llamaCudaManager) {
+          const LlamaCudaManager = require("./llamaCudaManager");
+          this._llamaCudaManager = new LlamaCudaManager();
+        }
+        return this._llamaCudaManager.getStatus();
+      } catch (error) {
+        return { supported: false, downloaded: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("download-llama-cuda-binary", async (event) => {
+      try {
+        if (!this._llamaCudaManager) {
+          const LlamaCudaManager = require("./llamaCudaManager");
+          this._llamaCudaManager = new LlamaCudaManager();
+        }
+
+        // Stop the CUDA server before downloading to release file locks on DLLs (Windows EBUSY)
+        const modelManager = require("./modelManagerBridge").default;
+        if (modelManager.serverManager.activeBackend === "cuda") {
+          await modelManager.stopServer().catch((err) => {
+            debugLogger.warn("Failed to stop CUDA server before download", { error: err.message });
+          });
+        }
+
+        const result = await this._llamaCudaManager.download((downloaded, total) => {
+          if (!event.sender.isDestroyed()) {
+            event.sender.send("llama-cuda-download-progress", {
+              downloaded,
+              total,
+              percentage: total > 0 ? Math.round((downloaded / total) * 100) : 0,
+            });
+          }
+        });
+
+        if (result.success) {
+          await this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
+          // Stop server so next inference picks up the new CUDA binary
+          await modelManager.stopServer().catch(() => {});
+        }
+
+        return result;
+      } catch (error) {
+        debugLogger.error("CUDA llama binary download failed", {
+          error: error.message,
+          stack: error.stack,
+        });
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("cancel-llama-cuda-download", async () => {
+      if (this._llamaCudaManager) {
+        return { success: this._llamaCudaManager.cancelDownload() };
+      }
+      return { success: false };
+    });
+
+    ipcMain.handle("delete-llama-cuda-binary", async () => {
+      try {
+        if (!this._llamaCudaManager) {
+          const LlamaCudaManager = require("./llamaCudaManager");
+          this._llamaCudaManager = new LlamaCudaManager();
+        }
+
+        const modelManager = require("./modelManagerBridge").default;
+        if (modelManager.serverManager.activeBackend === "cuda") {
+          await modelManager.stopServer();
+        }
+
+        const result = await this._llamaCudaManager.deleteBinary();
+
         this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
 
         return result;
@@ -6338,6 +6449,14 @@ class IPCHandlers {
       return { success: true };
     });
 
+    ipcMain.handle("update-cleanup-preview", async (_event, { text } = {}) => {
+      if (!dictationPreviewSessionActive) return { success: true };
+      if (typeof text === "string" && text.trim()) {
+        this.windowManager.updateCleanupPreview(text);
+      }
+      return { success: true };
+    });
+
     ipcMain.handle("hide-dictation-preview", async () => {
       resetDictationPreviewState();
       this.windowManager.hideTranscriptionPreview();
@@ -6353,13 +6472,38 @@ class IPCHandlers {
       if (!dictationPreviewMode && !dictationPreviewSessionActive) return { success: true };
       clearInterval(dictationPreviewTimer);
       dictationPreviewTimer = null;
+      // When an online (streaming) parakeet stream is running its accumulated
+      // transcript is finalized here and returned to the renderer, which can then
+      // paste it directly instead of paying a full offline re-transcription of the
+      // whole clip. Empty string when there is no live stream (renderer falls back).
+      let streamingText = "";
       if (dictationPreviewStream) {
+        // Let the last preview audio chunk — flushed by the renderer worklet on
+        // "stop" — reach dictation-preview-audio before we finalize, so the final
+        // word isn't dropped. Mirrors the flush wait in cleanupStreamingAudio().
+        await new Promise((resolve) => setTimeout(resolve, 120));
         const stream = dictationPreviewStream;
         dictationPreviewStream = null;
-        const { text } = await stream.finish().catch(() => ({ text: "" }));
-        if (text && dictationPreviewSessionActive) {
-          this.windowManager.showTranscriptionPreview(text);
+        const { text, finalized } = await stream
+          .finish()
+          .catch(() => ({ text: "", finalized: false }));
+        const filtered = filterFillerWords(text || "", dictationPreviewLanguage) || "";
+        // finalized=false here means the renderer will re-transcribe offline —
+        // the single biggest thing to watch if release latency scales with length.
+        debugLogger.debug("Streaming dictation finalize", {
+          finalized,
+          textLength: filtered.length,
+          fastPath: finalized && filtered.length > 0,
+        });
+        // Show whatever the stream produced in the preview overlay...
+        if (filtered && dictationPreviewSessionActive) {
+          this.windowManager.showTranscriptionPreview(filtered);
         }
+        // ...but only hand it back for pasting once the server acknowledged
+        // end-of-stream ("Done!"), meaning it decoded every sample we sent. On a
+        // dirty close/timeout (finalized=false) the renderer falls back to the
+        // authoritative offline transcription instead.
+        streamingText = finalized ? filtered : "";
       } else if (dictationPreviewProvider !== "nvidia") {
         // One last full retranscription for the most accurate preview right
         // before the real result replaces it.
@@ -6370,9 +6514,9 @@ class IPCHandlers {
       // it here would delay the real result for a preview that's about to be replaced
       // anyway.
       resetDictationPreviewState({ preserveSession: true });
-      if (!dictationPreviewSessionActive) return { success: true };
+      if (!dictationPreviewSessionActive) return { success: true, streamingText };
       this.windowManager.holdTranscriptionPreview(options);
-      return { success: true };
+      return { success: true, streamingText };
     });
   }
 

@@ -44,7 +44,6 @@ class WindowManager {
     this.winPushState = null;
     this._cachedActivationMode = "tap";
     this._floatingIconAutoHide = false;
-    this._startMinimized = false;
     this._agentAnimationState = null;
     this._panelStartPosition = "bottom-right";
     this._isDictatingToggle = false;
@@ -528,10 +527,6 @@ class WindowManager {
     this._floatingIconAutoHide = Boolean(enabled);
   }
 
-  setStartMinimized(enabled) {
-    this._startMinimized = Boolean(enabled);
-  }
-
   setPanelStartPosition(position) {
     this._panelStartPosition = position || "bottom-right";
     // Reposition the window immediately
@@ -875,6 +870,11 @@ class WindowManager {
     });
   }
 
+  updateCleanupPreview(text) {
+    if (!this.transcriptionPreviewWindow || this.transcriptionPreviewWindow.isDestroyed()) return;
+    this.transcriptionPreviewWindow.webContents.send("preview-cleanup-update", text);
+  }
+
   completeTranscriptionPreview(text) {
     if (!this.transcriptionPreviewWindow || this.transcriptionPreviewWindow.isDestroyed()) return;
     this.transcriptionPreviewWindow.webContents.send("preview-result", { text });
@@ -1127,8 +1127,7 @@ class WindowManager {
         this.mainWindow &&
         !this.mainWindow.isDestroyed() &&
         !this.mainWindow.isVisible() &&
-        !this._floatingIconAutoHide &&
-        !this._startMinimized
+        !this._floatingIconAutoHide
       ) {
         this.showDictationPanel();
       }
@@ -1137,7 +1136,7 @@ class WindowManager {
     this.mainWindow.once("ready-to-show", () => {
       clearTimeout(showTimeout);
       this.enforceMainWindowOnTop();
-      if (!this.mainWindow.isVisible() && !this._floatingIconAutoHide && !this._startMinimized) {
+      if (!this.mainWindow.isVisible() && !this._floatingIconAutoHide) {
         if (typeof this.mainWindow.showInactive === "function") {
           this.mainWindow.showInactive();
         } else {

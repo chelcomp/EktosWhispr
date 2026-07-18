@@ -782,12 +782,19 @@ export default function SettingsPage({
 
   useEffect(() => {
     if (activeSection !== "privacyData") return;
-    window.electronAPI
-      ?.getAudioStorageUsage?.()
-      .then((usage: { fileCount: number; totalBytes: number }) => {
-        if (usage) setAudioStorageUsage(usage);
-      })
-      .catch(() => {});
+    const refreshAudioStorageUsage = () => {
+      window.electronAPI
+        ?.getAudioStorageUsage?.()
+        .then((usage: { fileCount: number; totalBytes: number }) => {
+          if (usage) setAudioStorageUsage(usage);
+        })
+        .catch(() => {});
+    };
+    refreshAudioStorageUsage();
+    // Re-fetch whenever a recording finishes saving its audio, so the count
+    // doesn't stay stale if this section is already open while dictating.
+    const dispose = window.electronAPI?.onTranscriptionUpdated?.(refreshAudioStorageUsage);
+    return () => dispose?.();
   }, [activeSection]);
 
   // Lazy keep-alive: mount AI sections only after the user has visited them once,

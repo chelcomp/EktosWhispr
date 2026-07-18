@@ -64,6 +64,24 @@ function readBoolean(key: string, fallback: boolean): boolean {
   return stored === "true";
 }
 
+function readNumber(key: string, fallback: number): number {
+  if (!isBrowser) return fallback;
+  const stored = localStorage.getItem(key);
+  if (stored === null) return fallback;
+  const parsed = Number(stored);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+/** Default sampling parameters for local (llama.cpp) inference. */
+export const LOCAL_PARAM_DEFAULTS = {
+  temperature: 0.3,
+  topP: 0.9,
+  topK: 40,
+  minP: 0.05,
+  repeatPenalty: 1.1,
+  maxTokens: 4096,
+} as const;
+
 function readStringArray(key: string, fallback: string[]): string[] {
   if (!isBrowser) return fallback;
   const stored = localStorage.getItem(key);
@@ -508,6 +526,22 @@ export interface SettingsState
   setLocalModel: (value: string) => void;
   setLocalProvider: (value: string) => void;
 
+  // Manual local LLM sampling parameters — applied to every local (llama.cpp)
+  // inference regardless of which local model is selected.
+  localTemperature: number;
+  localTopP: number;
+  localTopK: number;
+  localMinP: number;
+  localRepeatPenalty: number;
+  localMaxTokens: number;
+  setLocalTemperature: (value: number) => void;
+  setLocalTopP: (value: number) => void;
+  setLocalTopK: (value: number) => void;
+  setLocalMinP: (value: number) => void;
+  setLocalRepeatPenalty: (value: number) => void;
+  setLocalMaxTokens: (value: number) => void;
+  resetLocalGenerationParams: () => void;
+
   customPrompts: Record<PromptKind, string>;
   setCustomPrompt: (kind: PromptKind, value: string) => void;
 
@@ -707,6 +741,13 @@ export function setStringSetting(key: keyof SettingsState, value: string): void 
 
 function createBooleanSetter(key: string) {
   return (value: boolean) => {
+    if (isBrowser) localStorage.setItem(key, String(value));
+    useSettingsStore.setState({ [key]: value });
+  };
+}
+
+function createNumberSetter(key: string) {
+  return (value: number) => {
     if (isBrowser) localStorage.setItem(key, String(value));
     useSettingsStore.setState({ [key]: value });
   };
@@ -959,6 +1000,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   cleanupProvider: readString("cleanupProvider", "openai"),
   localModel: readString("localModel", ""),
   localProvider: readString("localProvider", "qwen"),
+  localTemperature: readNumber("localTemperature", LOCAL_PARAM_DEFAULTS.temperature),
+  localTopP: readNumber("localTopP", LOCAL_PARAM_DEFAULTS.topP),
+  localTopK: readNumber("localTopK", LOCAL_PARAM_DEFAULTS.topK),
+  localMinP: readNumber("localMinP", LOCAL_PARAM_DEFAULTS.minP),
+  localRepeatPenalty: readNumber("localRepeatPenalty", LOCAL_PARAM_DEFAULTS.repeatPenalty),
+  localMaxTokens: readNumber("localMaxTokens", LOCAL_PARAM_DEFAULTS.maxTokens),
 
   // Secrets hydrate from main process in initializeSettings, never from localStorage.
   openaiApiKey: "",
@@ -1268,6 +1315,26 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setCleanupModel: createStringSetter("cleanupModel"),
   setLocalModel: createStringSetter("localModel"),
   setLocalProvider: createStringSetter("localProvider"),
+  setLocalTemperature: createNumberSetter("localTemperature"),
+  setLocalTopP: createNumberSetter("localTopP"),
+  setLocalTopK: createNumberSetter("localTopK"),
+  setLocalMinP: createNumberSetter("localMinP"),
+  setLocalRepeatPenalty: createNumberSetter("localRepeatPenalty"),
+  setLocalMaxTokens: createNumberSetter("localMaxTokens"),
+  resetLocalGenerationParams: () => {
+    const entries: Array<[string, number]> = [
+      ["localTemperature", LOCAL_PARAM_DEFAULTS.temperature],
+      ["localTopP", LOCAL_PARAM_DEFAULTS.topP],
+      ["localTopK", LOCAL_PARAM_DEFAULTS.topK],
+      ["localMinP", LOCAL_PARAM_DEFAULTS.minP],
+      ["localRepeatPenalty", LOCAL_PARAM_DEFAULTS.repeatPenalty],
+      ["localMaxTokens", LOCAL_PARAM_DEFAULTS.maxTokens],
+    ];
+    if (isBrowser) {
+      for (const [key, value] of entries) localStorage.setItem(key, String(value));
+    }
+    useSettingsStore.setState(Object.fromEntries(entries));
+  },
 
   setCustomDictionary: (words: string[]) => {
     if (isBrowser) localStorage.setItem("customDictionary", JSON.stringify(words));
@@ -1787,6 +1854,16 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
 export const selectIsCloudCleanupMode = (_state: SettingsState) => false;
 
+// The cleanup model actually in effect: local mode keeps it in localModel (cleanupModel
+// stays empty), every other mode uses cleanupModel. Use this everywhere the selected
+// cleanup model is read reactively so local mode isn't mistaken for "no model".
+export const selectEffectiveCleanupModel = (state: SettingsState) =>
+  selectIsCloudCleanupMode(state)
+    ? ""
+    : state.cleanupMode === "local"
+      ? state.localModel
+      : state.cleanupModel;
+
 export const selectEffectiveCleanupProvider = (state: SettingsState) => state.cleanupProvider;
 
 export const selectIsCloudChatAgentMode = (_state: SettingsState) => false;
@@ -1968,12 +2045,26 @@ export function getSettings() {
   return useSettingsStore.getState();
 }
 
+/**
+ * The user-configured sampling parameters applied to every local (llama.cpp)
+ * inference, regardless of which local model is selected. Read this at request
+ * build time so the values are always honored across streaming and
+ * non-streaming code paths.
+ */
+export function getLocalGenerationParams() {
+  const s = useSettingsStore.getState();
+  return {
+    temperature: s.localTemperature,
+    topP: s.localTopP,
+    topK: s.localTopK,
+    minP: s.localMinP,
+    repeatPenalty: s.localRepeatPenalty,
+    maxTokens: s.localMaxTokens,
+  };
+}
+
 export function getEffectiveCleanupModel() {
-  const state = useSettingsStore.getState();
-  if (selectIsCloudCleanupMode(state)) {
-    return "";
-  }
-  return state.cleanupMode === "local" ? state.localModel : state.cleanupModel;
+  return selectEffectiveCleanupModel(useSettingsStore.getState());
 }
 
 export function isCloudCleanupMode() {

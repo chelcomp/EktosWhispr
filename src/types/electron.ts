@@ -442,6 +442,19 @@ export interface LlamaVulkanDownloadProgress {
   percentage: number;
 }
 
+export interface LlamaCudaStatus {
+  supported: boolean;
+  downloaded: boolean;
+  downloading?: boolean;
+  error?: string;
+}
+
+export interface LlamaCudaDownloadProgress {
+  downloaded: number;
+  total: number;
+  percentage: number;
+}
+
 export type GpuBackendMode = "auto" | "cpu" | "gpu-intel" | "gpu-nvidia";
 
 export interface GpuModeInfo {
@@ -455,6 +468,7 @@ export interface GpuModeInfo {
   hasIntel: boolean;
   cudaReady: boolean;
   vulkanReady: boolean;
+  llamaCudaReady: boolean;
   nvidiaName: string | null;
   intelName: string | null;
 }
@@ -489,6 +503,8 @@ declare global {
         }
       ) => Promise<void>;
       setMicMuted: (muted: boolean) => Promise<{ success: boolean; error?: string }>;
+      getMicMuted: () => Promise<{ success: boolean; muted?: boolean; error?: string }>;
+      warmupMicMuteHelper: () => Promise<{ success: boolean }>;
       hideWindow: () => Promise<void>;
       showDictationPanel: () => Promise<void>;
       onToggleDictation: (callback: () => void) => () => void;
@@ -742,9 +758,9 @@ declare global {
         useLocalWhisper: boolean;
         localTranscriptionProvider: LocalTranscriptionProvider;
         model?: string;
-        cleanupProvider: string;
+        cleanupMode: string;
         cleanupModel?: string;
-        dictationAgentProvider: string;
+        dictationAgentMode: string;
         dictationAgentModel?: string;
       }) => Promise<void>;
 
@@ -938,6 +954,21 @@ declare global {
       }>;
       onLlamaVulkanDownloadProgress?: (
         callback: (data: LlamaVulkanDownloadProgress) => void
+      ) => () => void;
+      getLlamaCudaStatus?: () => Promise<LlamaCudaStatus>;
+      downloadLlamaCudaBinary?: () => Promise<{
+        success: boolean;
+        cancelled?: boolean;
+        error?: string;
+      }>;
+      cancelLlamaCudaDownload?: () => Promise<{ success: boolean }>;
+      deleteLlamaCudaBinary?: () => Promise<{
+        success: boolean;
+        deletedCount?: number;
+        error?: string;
+      }>;
+      onLlamaCudaDownloadProgress?: (
+        callback: (data: LlamaCudaDownloadProgress) => void
       ) => () => void;
 
       // Window control operations
@@ -1531,6 +1562,7 @@ declare global {
       onPreviewAppend?: (callback: (text: string) => void) => () => void;
       onPreviewHold?: (callback: (payload: { showCleanup: boolean }) => void) => () => void;
       onPreviewResult?: (callback: (payload: { text: string }) => void) => () => void;
+      onPreviewCleanupUpdate?: (callback: (text: string) => void) => () => void;
       onPreviewHide?: (callback: () => void) => () => void;
       startDictationPreview?: (opts: {
         provider: string;
@@ -1539,9 +1571,12 @@ declare global {
         initialPrompt?: string;
         streamingBeta?: boolean;
       }) => Promise<{ success: boolean }>;
-      stopDictationPreview?: (opts?: { showCleanup?: boolean }) => Promise<{ success: boolean }>;
+      stopDictationPreview?: (opts?: {
+        showCleanup?: boolean;
+      }) => Promise<{ success: boolean; streamingText?: string }>;
       dismissDictationPreview?: () => Promise<{ success: boolean }>;
       completeDictationPreview?: (payload: { text?: string }) => Promise<{ success: boolean }>;
+      updateCleanupPreview?: (text: string) => Promise<{ success: boolean }>;
       hideDictationPreview?: () => Promise<{ success: boolean }>;
       resizeTranscriptionPreviewWindow?: (
         width: number,

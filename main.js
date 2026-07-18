@@ -337,6 +337,8 @@ function registerSidecars() {
   sidecarRegistry.register("llama", () => modelManager.stopServer());
   const onnxWorkerClient = require("./src/helpers/onnxWorkerClient");
   sidecarRegistry.register("onnx", () => onnxWorkerClient.stop());
+  const micMuteManager = require("./src/helpers/micMuteManager");
+  sidecarRegistry.register("mic-mute-helper", () => micMuteManager.stop());
 }
 
 // Phase 2: Non-critical setup after windows are visible
@@ -440,14 +442,16 @@ async function startApp() {
   const needsPostMigrationOnboarding = postMigrationDetector.isReturningFromOldBundle();
   const startMinimized = environmentManager.getStartMinimized() && !needsPostMigrationOnboarding;
   if (debugLogger) debugLogger.info("Start minimized", { enabled: startMinimized, needsPostMigrationOnboarding });
-  // Must be set BEFORE createMainWindow() — its ready-to-show handler decides
-  // whether to auto-show the window, and can fire before createMainWindow()
-  // resolves, racing a post-hoc mainWindow.minimize() call.
-  windowManager.setStartMinimized(startMinimized);
   await windowManager.createMainWindow();
-  // Control panel and agent window are created on first use (lazy) to reduce startup RAM.
-  // All tray / hotkey / second-instance code paths already call createControlPanelWindow()
-  // and toggleAgentOverlay() handles lazy creation internally.
+  // "Start minimized" means: launch without the control panel window — the app
+  // lives in the tray plus the floating dictation panel. When it's off, open the
+  // control panel on launch. The floating dictation panel is always shown by
+  // createMainWindow(), independent of this setting.
+  if (!startMinimized) {
+    await windowManager.createControlPanelWindow();
+  }
+  // The agent window is created on first use (lazy) to reduce startup RAM.
+  // toggleAgentOverlay() handles lazy creation internally.
 
   const agentHotkeyCallback = () => {
     if (hotkeyManager.isInListeningMode()) return;
