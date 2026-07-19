@@ -18,29 +18,26 @@ const NIRCMD_URL = "https://www.nirsoft.net/utils/nircmd-x64.zip";
 const BIN_DIR = path.join(__dirname, "..", "resources", "bin");
 const NIRCMD_PATH = path.join(BIN_DIR, "nircmd.exe");
 
-// Use PowerShell with SSL cert validation disabled (nirsoft.net has cert issues).
-// Tries -SkipCertificateCheck (PS 6+) first, then the PS 5 workaround.
+// Use PowerShell as a fallback download mechanism (PowerShell's Invoke-WebRequest
+// consults the Windows/.NET certificate store, so it succeeds on corporate
+// networks with SSL-inspecting proxies where Node's bundled CA list doesn't
+// include the proxy's injected root CA). Certificate validation is NOT
+// disabled here: -UseBasicParsing alone is valid on both PowerShell 5.1 and
+// 6+/7+, so a single command form covers both without any cert-bypass flag.
+function buildNircmdPowerShellCommand(url, dest) {
+  return `Invoke-WebRequest -Uri '${url}' -OutFile '${dest}' -UseBasicParsing`;
+}
+
 async function downloadWithPowerShell(url, dest) {
-  // Try PS 6+ flag first
-  let result = spawnSync(
+  const result = spawnSync(
     "powershell",
-    ["-NoProfile", "-NonInteractive", "-Command",
-      `Invoke-WebRequest -Uri '${url}' -OutFile '${dest}' -UseBasicParsing -SkipCertificateCheck`],
+    ["-NoProfile", "-NonInteractive", "-Command", buildNircmdPowerShellCommand(url, dest)],
     { stdio: "pipe", timeout: 60000 }
   );
   if (result.status === 0) return;
 
-  // PS 5 fallback: disable cert validation via .NET callback
-  result = spawnSync(
-    "powershell",
-    ["-NoProfile", "-NonInteractive", "-Command",
-      `[Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; ` +
-      `Invoke-WebRequest -Uri '${url}' -OutFile '${dest}' -UseBasicParsing`],
-    { stdio: "pipe", timeout: 60000 }
-  );
-  if (result.status === 0) return;
-
-  throw new Error(`PowerShell download failed (exit ${result.status})`);
+  const stderr = (result.stderr ? result.stderr.toString() : "").trim().slice(0, 2000);
+  throw new Error(`PowerShell download failed (exit ${result.status}): ${stderr}`);
 }
 
 async function main() {
@@ -103,4 +100,12 @@ async function main() {
   }
 }
 
-main().catch(console.error);
+module.exports = {
+  buildNircmdPowerShellCommand,
+  downloadWithPowerShell,
+};
+
+// Only run main() when executed directly
+if (require.main === module) {
+  main().catch(console.error);
+}

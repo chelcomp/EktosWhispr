@@ -1224,7 +1224,7 @@ Biblioteca compartilhada `scripts/lib/download-utils.js`: `fetchLatestRelease` (
 | `download-minilm.js` | HuggingFace `sentence-transformers/all-MiniLM-L6-v2` | `--for-build`→bundled; senão→`~/.cache/ektoswhispr/embedding-models/` |
 | `download-whisper-vad-model.js` | HuggingFace `ggml-org/whisper-vad` | `ggml-silero-v5.1.2.bin` |
 | `download-diarization-models.js` | `k2-fsa/sherpa-onnx` (tags especiais) | modelos de segmentação/embedding/VAD |
-| `download-nircmd.js` | nirsoft.net direto (não GitHub) | `nircmd.exe` (fallback PowerShell com bypass TLS) |
+| `download-nircmd.js` | nirsoft.net direto (não GitHub) | `nircmd.exe` (fallback PowerShell sem bypass TLS — usa validação de certificado padrão do SO/.NET) |
 | `download-windows-{key,mic}-listener.js`, `-fast-paste.js`, `-system-audio-helper.js` | `OpenWhispr/openwhispr` (tags `{componente}-v{versão}`) | binários Windows nativos |
 | `download-meeting-aec-helper.js` | idem | `meeting-aec-helper-{platform}-{arch}` (4 alvos) |
 | `download-text-monitor.js` | idem | linux/windows text monitor |
