@@ -760,6 +760,7 @@ export default function SettingsPage({
 
   const voiceAgentKey = useSettingsStore((s) => s.voiceAgentKey);
   const setVoiceAgentKey = useSettingsStore((s) => s.setVoiceAgentKey);
+  const resetWhisperVad = useSettingsStore((s) => s.resetWhisperVad);
 
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
@@ -1340,6 +1341,14 @@ export default function SettingsPage({
                 onChange={(e) => setWhisperVadSamplesOverlap(Number(e.target.value))}
               />
             </div>
+          </div>
+        </SettingsPanelRow>
+        <SettingsPanelRow>
+          <div className="flex justify-end w-full">
+            <Button variant="ghost" size="sm" onClick={resetWhisperVad}>
+              <RotateCw className="mr-1.5 h-3.5 w-3.5" />
+              {t("settingsPage.transcription.vad.resetDefaults")}
+            </Button>
           </div>
         </SettingsPanelRow>
       </SettingsPanel>

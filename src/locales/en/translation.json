@@ -2008,6 +2008,7 @@
       "vad": {
         "title": "Voice Activity Detection",
         "description": "Configure how Silero VAD detects and segments speech for local Whisper transcription",
+        "resetDefaults": "Reset to defaults",
         "toggles": {
           "dictation": {
             "title": "Silero VAD for Dictation",

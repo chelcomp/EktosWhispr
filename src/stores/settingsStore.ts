@@ -702,6 +702,7 @@ export interface SettingsState
   setWhisperVadMaxSpeechDurationS: (value: number) => void;
   setWhisperVadSpeechPadMs: (value: number) => void;
   setWhisperVadSamplesOverlap: (value: number) => void;
+  resetWhisperVad: () => void;
   setPanelStartPosition: (position: "bottom-right" | "center" | "bottom-left") => void;
   setShowTranscriptionPreview: (value: boolean) => void;
   setParakeetStreamingBeta: (value: boolean) => void;
@@ -1678,6 +1679,33 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     useSettingsStore.setState({ whisperVadSamplesOverlap: next });
     if (isBrowser) {
       window.electronAPI?.setWhisperVadConfig?.({ samplesOverlap: next });
+    }
+  },
+  resetWhisperVad: () => {
+    const d = WHISPER_VAD_DEFAULTS;
+    const next = {
+      whisperVadThreshold: d.threshold,
+      whisperVadMinSpeechDurationMs: d.minSpeechDurationMs,
+      whisperVadMinSilenceDurationMs: d.minSilenceDurationMs,
+      whisperVadMaxSpeechDurationS: d.maxSpeechDurationS,
+      whisperVadSpeechPadMs: d.speechPadMs,
+      whisperVadSamplesOverlap: d.samplesOverlap,
+    };
+    if (isBrowser) {
+      for (const [key, value] of Object.entries(next)) {
+        localStorage.setItem(key, String(value));
+      }
+    }
+    useSettingsStore.setState(next);
+    if (isBrowser) {
+      window.electronAPI?.setWhisperVadConfig?.({
+        threshold: d.threshold,
+        minSpeechDurationMs: d.minSpeechDurationMs,
+        minSilenceDurationMs: d.minSilenceDurationMs,
+        maxSpeechDurationS: d.maxSpeechDurationS,
+        speechPadMs: d.speechPadMs,
+        samplesOverlap: d.samplesOverlap,
+      });
     }
   },
   setPanelStartPosition: (position: "bottom-right" | "center" | "bottom-left") => {

@@ -1814,6 +1814,7 @@
       "vad": {
         "title": "Detecção de atividade de voz",
         "description": "Configure como o Silero VAD detecta e segmenta a fala na transcrição local do Whisper",
+        "resetDefaults": "Repor predefinições",
         "toggles": {
           "dictation": {
             "title": "Silero VAD para ditado",
