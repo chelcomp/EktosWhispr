@@ -1,7 +1,9 @@
 # Transcription Engine Lifecycle (Pinning, Idle-Timeout, Crash Respawn)
 
 ## Status
-Draft
+Approved
+
+Approved directly by the project owner in conversation ("abra uma task para esta implementação") — not inferred by any subagent.
 
 ## Problem / Goal
 
