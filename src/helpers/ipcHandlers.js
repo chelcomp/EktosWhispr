@@ -2409,9 +2409,22 @@ class IPCHandlers {
                 "gpu"
               );
               const modelPath = modelManager.serverManager.modelPath;
+              const previousModelId = modelManager.currentServerModelId;
               await modelManager.serverManager.stop();
               if (modelPath) {
-                await modelManager.serverManager.start(modelPath);
+                const modelInfo = previousModelId
+                  ? modelManager.findModelById(previousModelId)
+                  : null;
+                if (modelInfo) {
+                  await modelManager.serverManager.start(modelPath, {
+                    contextSize: modelInfo.model.contextLength || 4096,
+                    threads: 4,
+                    gpuLayers: 99,
+                  });
+                  modelManager.currentServerModelId = previousModelId;
+                } else {
+                  await modelManager.serverManager.start(modelPath);
+                }
               }
             }
           }
