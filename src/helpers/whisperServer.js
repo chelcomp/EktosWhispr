@@ -306,6 +306,11 @@ class WhisperServerManager extends EventEmitter {
       path.join(__dirname, "..", "..", "resources", "bin", genericName)
     );
 
+    // Runtime-repaired installs (see whisperBinaryInstaller.js) land here — a
+    // user-writable location that doesn't require elevated permissions, since
+    // the packaged app's resources/bin/ may not be writable post-install.
+    candidates.push(path.join(app.getPath("userData"), "bin", binaryName));
+
     for (const candidate of candidates) {
       if (fs.existsSync(candidate)) {
         try {
@@ -414,7 +419,11 @@ class WhisperServerManager extends EventEmitter {
     const usingCuda = options.useCuda || false;
     const threadResolution = options.threadResolution || resolveWhisperThreads(options);
     const serverBinary = this.getServerBinaryPath(usingCuda ? { preferCuda: true } : {});
-    if (!serverBinary) throw new Error("whisper-server binary not found");
+    if (!serverBinary) {
+      const err = new Error("whisper-server binary not found");
+      err.code = "WHISPER_SERVER_BINARY_MISSING";
+      throw err;
+    }
     if (!fs.existsSync(modelPath)) throw new Error(`Model file not found: ${modelPath}`);
 
     this.port = await this.findAvailablePort();

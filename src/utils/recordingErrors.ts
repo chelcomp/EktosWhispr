@@ -17,10 +17,14 @@ export function getRecordingErrorTitle(error: RecordingError, t: TFunction): str
     return t("hooks.audioRecording.errorTitles.dailyLimitReached");
   if (error.code === "PROVIDER_RATE_LIMITED")
     return t("hooks.audioRecording.errorTitles.providerRateLimited");
+  if (error.code === "WHISPER_SERVER_BINARY_MISSING")
+    return t("hooks.audioRecording.errorTitles.whisperServerBinaryMissing");
   return error.title;
 }
 
 export function getRecordingErrorDescription(error: RecordingError, t: TFunction): string {
+  if (error.code === "WHISPER_SERVER_BINARY_MISSING")
+    return t("hooks.audioRecording.errorDescriptions.whisperServerBinaryMissing");
   if (error.messageKey) return t(error.messageKey);
   return error.description ?? "";
 }

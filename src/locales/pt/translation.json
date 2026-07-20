@@ -547,7 +547,8 @@
         "sessionExpired": "Sessão expirada",
         "offline": "Sem conexão",
         "dailyLimitReached": "Limite diário atingido",
-        "providerRateLimited": "Limite de taxa do provedor"
+        "providerRateLimited": "Limite de taxa do provedor",
+        "whisperServerBinaryMissing": "Whisper ausente"
       },
       "fallback": {
         "title": "Modo de fallback",
@@ -565,7 +566,15 @@
         "sessionExpired": "Sua sessão do EktosWhispr Cloud está indisponível. Entre novamente nas Configurações.",
         "offline": "Você está offline. A transcrição na nuvem exige conexão com a internet.",
         "dailyLimitReached": "Você atingiu o limite de transcrições de hoje. Tente novamente amanhã ou faça upgrade do seu plano.",
-        "providerRateLimited": "Seu provedor de transcrição limitou a solicitação. Aguarde um momento e tente novamente."
+        "providerRateLimited": "Seu provedor de transcrição limitou a solicitação. Aguarde um momento e tente novamente.",
+        "whisperServerBinaryMissing": "O motor de transcrição local está ausente nesta instalação. Clique em Baixar para buscá-lo e instalá-lo automaticamente."
+      },
+      "whisperServerDownload": {
+        "download": "Baixar",
+        "inProgress": "Baixando… {{percent}}%",
+        "retry": "Tentar novamente",
+        "successTitle": "Whisper pronto",
+        "successDescription": "O Whisper está pronto — tente ditar novamente."
       }
     },
     "clipboard": {

@@ -7,6 +7,8 @@ const debugLogger = require("./debugLogger");
 const { filterFillerWords } = require("./fillerWordFilter");
 const { BYOK_API_KEYS } = require("../config/secretKeys");
 const { classifyAndLog } = require("./networkErrors");
+const { classifyLocalWhisperError } = require("./whisperErrorClassifier");
+const whisperBinaryInstaller = require("./whisperBinaryInstaller");
 const GnomeShortcutManager = require("./gnomeShortcut");
 const HyprlandShortcutManager = require("./hyprlandShortcut");
 const { i18nMain, changeLanguage } = require("./i18nMain");
@@ -2137,53 +2139,10 @@ class IPCHandlers {
         return result;
       } catch (error) {
         debugLogger.error("Local Whisper transcription error", error);
-        const errorMessage = error.message || "Unknown error";
 
         // Return specific error types for better user feedback
-        if (errorMessage.includes("FFmpeg not found")) {
-          return {
-            success: false,
-            error: "ffmpeg_not_found",
-            message: "FFmpeg is missing. Please reinstall the app or install FFmpeg manually.",
-          };
-        }
-        if (
-          errorMessage.includes("FFmpeg conversion failed") ||
-          errorMessage.includes("FFmpeg process error")
-        ) {
-          return {
-            success: false,
-            error: "ffmpeg_error",
-            message: "Audio conversion failed. The recording may be corrupted.",
-          };
-        }
-        if (
-          errorMessage.includes("whisper.cpp not found") ||
-          errorMessage.includes("whisper-cpp")
-        ) {
-          return {
-            success: false,
-            error: "whisper_not_found",
-            message: "Whisper binary is missing. Please reinstall the app.",
-          };
-        }
-        if (
-          errorMessage.includes("Audio buffer is empty") ||
-          errorMessage.includes("Audio data too small")
-        ) {
-          return {
-            success: false,
-            error: "no_audio_data",
-            message: "No audio detected",
-          };
-        }
-        if (errorMessage.includes("model") && errorMessage.includes("not downloaded")) {
-          return {
-            success: false,
-            error: "model_not_found",
-            message: errorMessage,
-          };
-        }
+        const classified = classifyLocalWhisperError(error);
+        if (classified) return classified;
 
         throw error;
       }
@@ -2219,6 +2178,31 @@ class IPCHandlers {
           error: error.message,
           code: error.code || "DOWNLOAD_FAILED",
         };
+      }
+    });
+
+    // Runtime repair download for a missing whisper-server binary (see
+    // WHISPER_SERVER_BINARY_MISSING). User-triggered only — never automatic.
+    ipcMain.handle("download-whisper-server-binary", async (event) => {
+      try {
+        const result = await whisperBinaryInstaller.downloadServerBinary((percent) => {
+          if (!event.sender.isDestroyed()) {
+            event.sender.send("whisper-server-download-progress", { type: "progress", percent });
+          }
+        });
+        if (!event.sender.isDestroyed()) {
+          event.sender.send("whisper-server-download-progress", { type: "complete" });
+        }
+        return result;
+      } catch (error) {
+        debugLogger.error("Runtime whisper-server binary download failed", error);
+        if (!event.sender.isDestroyed()) {
+          event.sender.send("whisper-server-download-progress", {
+            type: "error",
+            error: error.message,
+          });
+        }
+        return { success: false, error: error.message };
       }
     });
 

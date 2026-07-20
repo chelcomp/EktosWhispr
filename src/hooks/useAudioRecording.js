@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, createElement } from "react";
 import { useTranslation } from "react-i18next";
 import AudioManager from "../helpers/audioManager";
 import logger from "../utils/logger";
@@ -7,6 +7,7 @@ import { getSettings } from "../stores/settingsStore";
 import { expandSnippets } from "../utils/snippets";
 import { getRecordingErrorTitle, getRecordingErrorDescription } from "../utils/recordingErrors";
 import { isAccessibilitySkipped } from "../utils/permissions";
+import WhisperServerBinaryMissingAction from "../components/WhisperServerBinaryMissingAction";
 
 export const useAudioRecording = (toast, options = {}) => {
   const { t } = useTranslation();
@@ -23,7 +24,7 @@ export const useAudioRecording = (toast, options = {}) => {
   // recording — only restore the mute afterward if it actually was.
   const micWasMutedRef = useRef(false);
   const lastPasteRef = useRef({ text: "", atMs: 0 });
-  const { onToggle } = options;
+  const { onToggle, dismissToast } = options;
 
   const performStartRecording = useCallback(async ({ voiceAgentRequested = false } = {}) => {
     if (startLockRef.current) return false;
@@ -159,12 +160,33 @@ export const useAudioRecording = (toast, options = {}) => {
         }
         const title = getRecordingErrorTitle(error, t);
         const description = getRecordingErrorDescription(error, t);
-        toast({
-          title,
-          description,
-          variant: "destructive",
-          duration: error.code === "AUTH_EXPIRED" ? 8000 : undefined,
-        });
+
+        if (error.code === "WHISPER_SERVER_BINARY_MISSING") {
+          // Stays visible until resolved (no auto-dismiss) — the user needs
+          // time to notice and click "Download". `toastIdHolder` defers
+          // reading the id until click time, since `toast()` hasn't returned
+          // it yet while this action element is being constructed.
+          const toastIdHolder = { current: undefined };
+          const toastId = toast({
+            title,
+            description,
+            variant: "destructive",
+            duration: 0,
+            action: createElement(WhisperServerBinaryMissingAction, {
+              toast,
+              dismiss: dismissToast,
+              getToastId: () => toastIdHolder.current,
+            }),
+          });
+          toastIdHolder.current = toastId;
+        } else {
+          toast({
+            title,
+            description,
+            variant: "destructive",
+            duration: error.code === "AUTH_EXPIRED" ? 8000 : undefined,
+          });
+        }
         if (getSettings().pauseMediaOnDictation) {
           window.electronAPI?.resumeMediaPlayback?.();
         }
@@ -348,7 +370,7 @@ export const useAudioRecording = (toast, options = {}) => {
         audioManagerRef.current.cleanup();
       }
     };
-  }, [toast, onToggle, performStartRecording, performStopRecording, t]);
+  }, [toast, onToggle, dismissToast, performStartRecording, performStopRecording, t]);
 
   const cancelRecording = useCallback(async () => {
     if (audioManagerRef.current) {

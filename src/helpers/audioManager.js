@@ -1201,7 +1201,11 @@ registerProcessor("pcm-collector-processor", PCMCollectorProcessor);
       } else if (result.success === false && result.message === "No audio detected") {
         throw new Error("No audio detected");
       } else {
-        throw new Error(result.message || result.error || "Local Whisper transcription failed");
+        const newErr = new Error(
+          result.message || result.error || "Local Whisper transcription failed"
+        );
+        if (result.code) newErr.code = result.code;
+        throw newErr;
       }
     } catch (error) {
       if (error.message === "No audio detected") {
@@ -1220,7 +1224,9 @@ registerProcessor("pcm-collector-processor", PCMCollectorProcessor);
           );
         }
       } else {
-        throw new Error(`Local Whisper failed: ${error.message}`);
+        const newErr = new Error(`Local Whisper failed: ${error.message}`);
+        if (error.code) newErr.code = error.code;
+        throw newErr;
       }
     }
   }

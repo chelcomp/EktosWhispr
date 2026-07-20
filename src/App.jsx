@@ -206,6 +206,7 @@ export default function App() {
   const { isRecording, isProcessing, toggleListening, cancelRecording, cancelProcessing } =
     useAudioRecording(toast, {
       onToggle: handleDictationToggle,
+      dismissToast: dismiss,
     });
 
   // Sync auto-hide from main process — setState directly to avoid IPC echo
