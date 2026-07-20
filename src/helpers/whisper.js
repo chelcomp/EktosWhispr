@@ -308,9 +308,11 @@ class WhisperManager {
 
     // Server mode required
     if (!this.serverManager.isAvailable()) {
-      throw new Error(
+      const err = new Error(
         "whisper-server binary not found. Please ensure the app is installed correctly."
       );
+      err.code = "WHISPER_SERVER_BINARY_MISSING";
+      throw err;
     }
 
     const model = options.model || "base";

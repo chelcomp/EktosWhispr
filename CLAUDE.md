@@ -735,6 +735,10 @@ const { t } = useTranslation();
    - Check audio levels in debug logs
 
 2. **Transcription Fails**:
+   - If the error toast says the whisper-server binary is missing, try the in-toast
+     "Download" action first — it downloads and installs the missing binary at runtime
+     into `userData/bin/` (see `src/helpers/whisperBinaryInstaller.js`) without needing a
+     reinstall. Only fall back to `npm run download:whisper-cpp` (dev-only) if that fails.
    - Ensure whisper.cpp binary is available
    - Check model is downloaded
    - Check temporary file creation

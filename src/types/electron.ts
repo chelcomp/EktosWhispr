@@ -337,6 +337,18 @@ export interface WhisperDownloadProgressData {
   result?: any;
 }
 
+export interface WhisperServerDownloadProgressData {
+  type: "progress" | "complete" | "error";
+  percent?: number;
+  error?: string;
+}
+
+export interface WhisperServerBinaryDownloadResult {
+  success: boolean;
+  binaryPath?: string;
+  error?: string;
+}
+
 export interface ParakeetCheckResult {
   installed: boolean;
   working: boolean;
@@ -782,6 +794,10 @@ declare global {
       downloadWhisperModel: (modelName: string) => Promise<WhisperModelResult>;
       onWhisperDownloadProgress: (
         callback: (event: any, data: WhisperDownloadProgressData) => void
+      ) => () => void;
+      downloadWhisperServerBinary: () => Promise<WhisperServerBinaryDownloadResult>;
+      onWhisperServerDownloadProgress: (
+        callback: (event: any, data: WhisperServerDownloadProgressData) => void
       ) => () => void;
       checkModelStatus: (modelName: string) => Promise<WhisperModelResult>;
       listWhisperModels: () => Promise<WhisperModelsListResult>;

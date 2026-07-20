@@ -1,7 +1,8 @@
 import * as React from "react";
-import { X, Copy, Check } from "lucide-react";
+import { X, Copy, Check, AlertTriangle } from "lucide-react";
 import { cn } from "../lib/utils";
 import { ToastContext, type ToastProps } from "./useToast";
+import { copyTextWithFallback } from "../../helpers/clipboardCopyFallback";
 
 interface ToastState extends ToastProps {
   id: string;
@@ -176,6 +177,7 @@ const Toast: React.FC<
   const config = variantConfig[variant];
   const pausedAtRef = React.useRef<number | null>(null);
   const [copied, setCopied] = React.useState(false);
+  const [copyFailed, setCopyFailed] = React.useState(false);
   const isDestructive = variant === "destructive";
 
   const handleMouseEnter = () => {
@@ -194,11 +196,14 @@ const Toast: React.FC<
 
   const handleCopyError = async () => {
     if (!description) return;
-    try {
-      await navigator.clipboard.writeText(description);
+    const result = await copyTextWithFallback(description);
+    if (result.success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } else {
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 2000);
+    }
   };
 
   const message = title || description;
@@ -245,7 +250,13 @@ const Toast: React.FC<
                     )}
                     aria-label="Copy error"
                   >
-                    {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+                    {copied ? (
+                      <Check className="size-3" />
+                    ) : copyFailed ? (
+                      <AlertTriangle className="size-3 text-red-300" />
+                    ) : (
+                      <Copy className="size-3" />
+                    )}
                   </button>
                 </div>
               </div>
