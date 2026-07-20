@@ -211,6 +211,80 @@ test("start() throws immediately when no backend in the chain has a binary", asy
   await assert.rejects(() => manager.start(FAKE_MODEL_PATH), /llama-server binary not found/);
 });
 
+// --- start(): --ctx-size launch argument ---------------------------------
+
+test("start() passes --ctx-size derived from options.contextSize to the spawned backend", async () => {
+  const cuda = makeBackend({ name: "cuda", gpuAccelerated: true });
+  const { fakeSpawn, calls } = createFakeSpawn({ [cuda.getBinaryPath()]: "succeed" });
+  const manager = loadLlamaServerManager({ spawn: fakeSpawn, backendChain: [cuda] });
+  withHealthTrackingProcess(manager);
+
+  await manager.start(FAKE_MODEL_PATH, { contextSize: 262144, threads: 8 });
+
+  const idx = calls[0].args.indexOf("--ctx-size");
+  assert.ok(idx !== -1, "--ctx-size flag should be present");
+  assert.equal(calls[0].args[idx + 1], "262144");
+
+  // Full-args assertion: guard every other launch parameter too, so a
+  // regression to any flag (not just --ctx-size) fails this test.
+  assert.deepEqual(calls[0].args, [
+    "--model",
+    FAKE_MODEL_PATH,
+    "--host",
+    "127.0.0.1",
+    "--port",
+    String(manager.port),
+    "--threads",
+    "8",
+    "--ctx-size",
+    "262144",
+    "--jinja",
+    "--cuda-flag",
+  ]);
+});
+
+test("start() falls back to the default --ctx-size when contextSize is not provided", async () => {
+  const LlamaServerManager = require("../../src/helpers/llamaServer");
+  const cpu = makeBackend({ name: "cpu" });
+  const { fakeSpawn, calls } = createFakeSpawn({ [cpu.getBinaryPath()]: "succeed" });
+  const manager = loadLlamaServerManager({ spawn: fakeSpawn, backendChain: [cpu] });
+  withHealthTrackingProcess(manager);
+
+  await manager.start(FAKE_MODEL_PATH);
+
+  const idx = calls[0].args.indexOf("--ctx-size");
+  assert.ok(idx !== -1, "--ctx-size flag should be present");
+  assert.equal(calls[0].args[idx + 1], String(LlamaServerManager.DEFAULT_CONTEXT_SIZE));
+
+  assert.deepEqual(calls[0].args, [
+    "--model",
+    FAKE_MODEL_PATH,
+    "--host",
+    "127.0.0.1",
+    "--port",
+    String(manager.port),
+    "--threads",
+    "4",
+    "--ctx-size",
+    String(LlamaServerManager.DEFAULT_CONTEXT_SIZE),
+    "--jinja",
+    "--cpu-flag",
+  ]);
+});
+
+test("start() falls back to the default --ctx-size when contextSize is invalid (non-positive/NaN)", async () => {
+  const LlamaServerManager = require("../../src/helpers/llamaServer");
+  const cpu = makeBackend({ name: "cpu" });
+  const { fakeSpawn, calls } = createFakeSpawn({ [cpu.getBinaryPath()]: "succeed" });
+  const manager = loadLlamaServerManager({ spawn: fakeSpawn, backendChain: [cpu] });
+  withHealthTrackingProcess(manager);
+
+  await manager.start(FAKE_MODEL_PATH, { contextSize: -1 });
+
+  const idx = calls[0].args.indexOf("--ctx-size");
+  assert.equal(calls[0].args[idx + 1], String(LlamaServerManager.DEFAULT_CONTEXT_SIZE));
+});
+
 // --- getStatus() gpuAccelerated flag -------------------------------------
 
 test("getStatus reports gpuAccelerated for cuda, vulkan and metal but not cpu", () => {

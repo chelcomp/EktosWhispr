@@ -17,6 +17,10 @@ const HEALTH_CHECK_TIMEOUT_MS = 2000;
 const STARTUP_POLL_INTERVAL_MS = 500;
 const HEALTH_CHECK_FAILURE_THRESHOLD = 3;
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+// Matches the fallback literal already used by both modelManagerBridge.js call
+// sites (runInference/prewarmServer) so the same number appears in one more
+// place, not a new arbitrary value.
+const DEFAULT_CONTEXT_SIZE = 4096;
 
 class LlamaServerManager {
   constructor() {
@@ -75,6 +79,12 @@ class LlamaServerManager {
       String(this.port),
       "--threads",
       String(options.threads || 4),
+      "--ctx-size",
+      String(
+        Number.isFinite(options.contextSize) && options.contextSize > 0
+          ? options.contextSize
+          : DEFAULT_CONTEXT_SIZE
+      ),
       "--jinja",
     ];
 
@@ -500,3 +510,4 @@ class LlamaServerManager {
 }
 
 module.exports = LlamaServerManager;
+module.exports.DEFAULT_CONTEXT_SIZE = DEFAULT_CONTEXT_SIZE;
