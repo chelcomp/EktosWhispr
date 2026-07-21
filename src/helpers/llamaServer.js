@@ -24,7 +24,7 @@ const DEFAULT_CONTEXT_SIZE = 4096;
 // The value modelManagerBridge.js targets on a fresh (non-retry) server start
 // for a model. _doStart itself doesn't know about this — it just launches
 // whatever --ctx-size it's given, clamped only against MAX_CONTEXT_SIZE below.
-const DEFAULT_CONTEXT_CAP = 4096;
+const DEFAULT_CONTEXT_CAP = 2048;
 // The real outer ceiling _doStart enforces, reachable only via
 // modelManagerBridge.js's overflow-doubling retry logic.
 const MAX_CONTEXT_SIZE = 65536;
@@ -221,7 +221,7 @@ class LlamaServerManager {
     if (!stripCapabilityFlags) {
       const capabilities = probeBinaryCapabilities(binaryPath);
       if (capabilities.kvCacheQuant) {
-        args = [...args, "--cache-type-k", "q4_0", "--cache-type-v", "q4_0", "--flash-attn", "on"];
+        args = [...args, "--cache-type-k", "q8_0", "--cache-type-v", "q8_0", "--flash-attn", "on"];
         kvCacheQuantized = true;
       }
       if (capabilities.fit) {

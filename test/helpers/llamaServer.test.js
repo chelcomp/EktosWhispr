@@ -404,9 +404,9 @@ test("start() adds KV-cache quantization and flash-attn flags when the resolved 
 
   const args = calls[0].args;
   assert.ok(args.includes("--cache-type-k"));
-  assert.equal(args[args.indexOf("--cache-type-k") + 1], "q4_0");
+  assert.equal(args[args.indexOf("--cache-type-k") + 1], "q8_0");
   assert.ok(args.includes("--cache-type-v"));
-  assert.equal(args[args.indexOf("--cache-type-v") + 1], "q4_0");
+  assert.equal(args[args.indexOf("--cache-type-v") + 1], "q8_0");
   assert.ok(args.includes("--flash-attn"));
   assert.equal(args[args.indexOf("--flash-attn") + 1], "on");
   assert.ok(!args.includes("--fit"));

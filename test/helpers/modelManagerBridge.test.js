@@ -88,11 +88,11 @@ test("runInference() doubles context size once and retries after a single Contex
   const result = await modelManager.runInference("model-a", "hello");
 
   assert.equal(result, "final result");
-  // First call is the fresh (non-retry) start at the 4096 default; the second
-  // is the doubling retry to 8192.
+  // First call is the fresh (non-retry) start at the 2048 default; the second
+  // is the doubling retry to 4096.
   assert.equal(startCalls.length, 2);
-  assert.equal(startCalls[0].options.contextSize, 4096);
-  assert.equal(startCalls[1].options.contextSize, 8192);
+  assert.equal(startCalls[0].options.contextSize, 2048);
+  assert.equal(startCalls[1].options.contextSize, 4096);
 });
 
 test("runInference() keeps doubling on repeated ContextOverflowError up to the 65536 cap, then propagates the error", async () => {
@@ -111,9 +111,9 @@ test("runInference() keeps doubling on repeated ContextOverflowError up to the 6
     (err) => err instanceof ModelError
   );
 
-  // Fresh start (4096) + 4 doubling restarts: 8192, 16384, 32768, 65536.
+  // Fresh start (2048) + 5 doubling restarts: 4096, 8192, 16384, 32768, 65536.
   const sizes = startCalls.map((c) => c.options.contextSize);
-  assert.deepEqual(sizes, [4096, 8192, 16384, 32768, 65536]);
+  assert.deepEqual(sizes, [2048, 4096, 8192, 16384, 32768, 65536]);
 });
 
 test("runInference() never requests a context size above the model's own registry contextLength, even if the 65536 cap allows more", async () => {
@@ -133,9 +133,9 @@ test("runInference() never requests a context size above the model's own registr
   );
 
   const sizes = startCalls.map((c) => c.options.contextSize);
-  // Fresh start at 4096 (contextLength 20000 > DEFAULT_CONTEXT_CAP so cap
-  // wins), then doubles 8192, 16384, then clamps to 20000 and stops.
-  assert.deepEqual(sizes, [4096, 8192, 16384, 20000]);
+  // Fresh start at 2048 (contextLength 20000 > DEFAULT_CONTEXT_CAP so cap
+  // wins), then doubles 4096, 8192, 16384, then clamps to 20000 and stops.
+  assert.deepEqual(sizes, [2048, 4096, 8192, 16384, 20000]);
 });
 
 test("runInference() reuses the previously-doubled context size for a subsequent request to the same model without re-triggering an overflow", async () => {
@@ -157,7 +157,7 @@ test("runInference() reuses the previously-doubled context size for a subsequent
 
   const first = await modelManager.runInference("model-a", "hello");
   assert.equal(first, "ok");
-  assert.equal(startCalls.length, 2); // fresh start (4096) + doubling retry (8192)
+  assert.equal(startCalls.length, 2); // fresh start (2048) + doubling retry (4096)
 
   const second = await modelManager.runInference("model-a", "hello again");
   assert.equal(second, "ok");
@@ -165,7 +165,7 @@ test("runInference() reuses the previously-doubled context size for a subsequent
   assert.equal(startCalls.length, 2);
 });
 
-test("runInference() resets the tracked context size back to the 4096 default when the model changes", async () => {
+test("runInference() resets the tracked context size back to the 2048 default when the model changes", async () => {
   const modelInfos = {
     a: { model: { id: "a", fileName: "a.gguf", contextLength: 262144 }, provider: { id: "local" } },
     b: { model: { id: "b", fileName: "b.gguf", contextLength: 262144 }, provider: { id: "local" } },
@@ -186,9 +186,9 @@ test("runInference() resets the tracked context size back to the 4096 default wh
 
   await modelManager.runInference("model-a", "hello");
   assert.equal(startCalls.length, 2);
-  assert.equal(startCalls[1].options.contextSize, 8192);
+  assert.equal(startCalls[1].options.contextSize, 4096);
 
   await modelManager.runInference("model-b", "hello");
   const lastCall = startCalls[startCalls.length - 1];
-  assert.equal(lastCall.options.contextSize, 4096);
+  assert.equal(lastCall.options.contextSize, 2048);
 });

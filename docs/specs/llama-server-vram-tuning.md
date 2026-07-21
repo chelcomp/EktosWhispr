@@ -4,6 +4,15 @@
 
 Implemented
 
+## Addendum (post-implementation production fix)
+
+Live-testing this spec's implementation (commit `d3ed9e16`) surfaced a real bug and prompted two follow-up parameter changes, made directly (not through a separate spec, given their small/mechanical scope and the urgency of a live quality regression):
+
+- **Bug found**: `prewarmServer()` in `modelManagerBridge.js` launched llama-server directly at the model's full registry `contextLength` (e.g. `65536` for Qwen2.5-7B-Instruct) instead of the clamped starting default this spec's design intended — it also never populated `currentContextSizeByModel`, so the first overflow retry would restart the already-large-context server *downward* rather than continuing to grow it. **Fixed**: `prewarmServer()` now computes `Math.min(modelInfo.model.contextLength || DEFAULT_CONTEXT_CAP, DEFAULT_CONTEXT_CAP)` (the same clamp `runInference()` already used) and records the result in `currentContextSizeByModel`. The `ipcHandlers.js` GPU-device-change restart path was similarly fixed to prefer a tracked context size over the raw registry `contextLength`.
+- **`DEFAULT_CONTEXT_CAP` lowered from `4096` to `2048`.** Every mention of "4096 is the starting default" and the doubling sequence throughout this document (below) should now be read as **2048** (sequence: `2048→4096→8192→16384→32768→65536`, one extra doubling step).
+- **KV-cache quantization changed from `q4_0` to `q8_0`** (`--cache-type-k q8_0 --cache-type-v q8_0`), still gated behind the same binary-capability probe. Rationale: a live dictation-cleanup request (11 characters of input, Qwen2.5-7B-Instruct-Q4_K_M) produced a runaway completion of 2400+ tokens (taking ~1 minute) while running with `q4_0` KV-cache quantization — the more aggressive 4-bit KV-cache, stacked on an already-4-bit-quantized model, is suspected to have degraded output coherence enough that the model failed to emit a stop token promptly. `q8_0` still saves roughly half the f16 KV-cache footprint with much less precision loss.
+- Every mention of `q4_0` below reflects the original design intent at the time this spec was written; the shipped, current value is `q8_0`. Tests (`test/helpers/llamaServer.test.js`, `test/helpers/modelManagerBridge.test.js`, `test/helpers/llamaServerGpuRestart.test.js`) and `CLAUDE.md` §8 have been updated to match the current 2048/q8_0 values.
+
 ## TL;DR
 
 - Follow-up to `docs/specs/llama-server-ctx-size-fix.md` (Implemented, PR #19). That fix made `--ctx-size` always get _passed_; this spec tunes _what value_ gets passed, adds KV-cache quantization, adds `--fit on` (a real, verified flag on the bundled binary), and makes the context size grow automatically when a request actually needs more room — purely to shrink the local-LLM sidecar's VRAM/RAM footprint/boot time while no longer hard-truncating long chats/notes. Does not touch raw Whisper/Parakeet transcription (separate 500ms budget, CLAUDE.md §3).

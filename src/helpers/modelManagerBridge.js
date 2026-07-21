@@ -495,13 +495,18 @@ class ModelManager {
     if (!this.serverManager.isAvailable()) return false;
 
     try {
+      const startContextSize = Math.min(
+        modelInfo.model.contextLength || DEFAULT_CONTEXT_CAP,
+        DEFAULT_CONTEXT_CAP
+      );
       await this.serverManager.start(modelPath, {
-        contextSize: modelInfo.model.contextLength || 4096,
+        contextSize: startContextSize,
         threads: 4,
         gpuLayers: 99,
       });
       this.currentServerModelId = modelId;
-      debugLogger.info("llama-server pre-warmed", { modelId });
+      this.currentContextSizeByModel.set(modelId, startContextSize);
+      debugLogger.info("llama-server pre-warmed", { modelId, contextSize: startContextSize });
       return true;
     } catch (error) {
       debugLogger.warn("Failed to pre-warm llama-server", { error: error.message });
