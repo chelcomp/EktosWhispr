@@ -3644,6 +3644,17 @@ class IPCHandlers {
               error: err.message,
             });
           });
+          // Same-provider model change (docs/specs/on-demand-model-lifecycle.md R4):
+          // switching Parakeet models must unload the stale model immediately, not
+          // wait for the next lazy swap-on-mismatch or the idle timeout.
+          const currentParakeetModel = this.parakeetManager.getCurrentModel();
+          if (currentParakeetModel && currentParakeetModel !== prefs.model) {
+            this.parakeetManager.stopServer().catch((err) => {
+              debugLogger.error("Failed to stop parakeet-server on model switch", {
+                error: err.message,
+              });
+            });
+          }
         } else {
           setVars.LOCAL_WHISPER_MODEL = prefs.model;
           clearVars.push("PARAKEET_MODEL");
@@ -3652,6 +3663,16 @@ class IPCHandlers {
               error: err.message,
             });
           });
+          // Same-provider model change (docs/specs/on-demand-model-lifecycle.md R4):
+          // switching Whisper models must unload the stale model immediately.
+          const currentWhisperModel = this.whisperManager.currentServerModel;
+          if (currentWhisperModel && currentWhisperModel !== prefs.model) {
+            this.whisperManager.stopServer().catch((err) => {
+              debugLogger.error("Failed to stop whisper-server on model switch", {
+                error: err.message,
+              });
+            });
+          }
         }
       } else if (prefs.useLocalWhisper) {
         // Local mode enabled but no model selected - clear pre-warming vars

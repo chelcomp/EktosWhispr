@@ -63,6 +63,13 @@ class ParakeetManager {
     return path.join(this.getModelsDir(), modelName);
   }
 
+  // Currently-loaded model name (null if the server isn't running), used to
+  // detect a same-provider model change (docs/specs/on-demand-model-lifecycle.md
+  // R4) that must unload the stale model immediately rather than lazily.
+  getCurrentModel() {
+    return this.serverManager.wsServer.modelName;
+  }
+
   // R1 (docs/specs/on-demand-model-lifecycle.md): no longer pre-warms the
   // parakeet server — that startup call site was removed from main.js.
   // Retained (and still called at startup) for its non-pre-warm setup:
