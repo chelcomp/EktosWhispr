@@ -215,11 +215,22 @@ test("is a no-op when no model is configured for the selected local provider", (
   assert.deepEqual(calls, []);
 });
 
-test("never throws/rejects even if the underlying IPC call rejects (fire-and-forget)", () => {
+test("never throws/rejects even if the underlying IPC call rejects (fire-and-forget)", async () => {
   const manager = makeManager();
   global.window.electronAPI = {
     whisperServerStart: () => Promise.reject(new Error("sidecar failed to spawn")),
   };
+
+  // warmupTranscriptionEngine() itself returns synchronously (undefined), so
+  // assert.doesNotThrow alone can't prove the underlying rejection was
+  // actually swallowed via `.catch(() => {})` rather than left to surface as
+  // an unhandled rejection later. Listen for that instead — this fails if
+  // the `.catch` is ever removed from the real implementation.
+  let sawUnhandledRejection = false;
+  const onUnhandledRejection = () => {
+    sawUnhandledRejection = true;
+  };
+  process.once("unhandledRejection", onUnhandledRejection);
 
   assert.doesNotThrow(() => {
     manager.warmupTranscriptionEngine({
@@ -229,6 +240,12 @@ test("never throws/rejects even if the underlying IPC call rejects (fire-and-for
       parakeetModel: null,
     });
   });
+
+  // Let the rejected promise's microtask queue (and any unhandledRejection
+  // dispatch) settle before asserting.
+  await new Promise((resolve) => setImmediate(resolve));
+  process.removeListener("unhandledRejection", onUnhandledRejection);
+  assert.equal(sawUnhandledRejection, false);
 });
 
 test("never throws when window.electronAPI itself is unavailable", () => {
