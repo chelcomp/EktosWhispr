@@ -728,21 +728,36 @@ See `docs/specs/audio-transcription-batching.md` for the full design.
 
 **Live Preview Sensitivity (own settings, decoupled from Silero VAD)**: the energy-RMS
 detector above is a crude, architecturally different animal from the neural Silero VAD that
-governs the offline/full-clip Whisper pass (Settings → Speech-to-Text → "Voice Activity
-Detection"). It has its own, independent, user-visible settings section — "Live Preview
-Sensitivity" — rather than borrowing/clamping Silero's values (see
-`docs/specs/live-preview-vad-sensitivity.md`). `minSpeechDurationMs` (default `80`, drives
-`_voicedRunMs >= minSpeechDurationMs`) and `minSilenceDurationMs` (default `500`, closes a
-segment) are user-tunable; `speechPadMs` (`100`), `maxSpeechDurationS` (`20`), and
-`samplesOverlap` (`0.3`) get their own fixed defaults in the same new namespace but are not
-exposed as UI controls. New files: `src/constants/previewVad.json`,
-`src/helpers/previewVadConfig.js` (mirrors `whisperVad.json`/`whisperVadConfig.js`'s pattern:
-`DEFAULT_PREVIEW_VAD_CONFIG`, `clampPreviewVadField`, `sanitizePreviewVadConfig`, plus
-`resolvePreviewVadConfig()`). New IPC: `preview-vad-get-config`/`preview-vad-set-config`,
-`ipcHandlers.js`'s `_resolvePreviewVadOptions()` (dictation-only — this settings section
-only affects `start-dictation-preview`). `start-dictation-preview` builds its `vadConfig`
+governs the offline/full-clip Whisper pass. Settings → Speech-to-Text → Dictation presents
+these as two tabs — "Live" (this energy detector) and "Voice Activity Detection" (Silero) —
+via `DictationVadTabs` (`SettingsPage.tsx`, a named export reusing the file's
+`ProviderTabs`/`useSubTab`/`TabPanel` sub-tab pattern, own localStorage key
+`settings.dictationVadTab`, defaults to "Live"; renders with no tab bar at all when Silero
+doesn't apply, i.e. the nvidia/Parakeet local provider). Rather than borrowing/clamping
+Silero's values (see `docs/specs/live-preview-vad-sensitivity.md`,
+`docs/specs/vad-settings-tabs.md`), "Live" now exposes 10 of the energy detector's 11
+constructor fields as user-tunable: `minSpeechDurationMs` (default `80`, drives
+`_voicedRunMs >= minSpeechDurationMs`), `minSilenceDurationMs` (default `500`, closes a
+segment), `speechPadMs` (`100`), `maxSpeechDurationS` (`20`), `samplesOverlap` (`0.3`),
+`energyThreshold` (`0.006`), `minSegmentRms` (`0.003`), `noiseFloorFactor` (`3`),
+`noiseFloorAlpha` (`0.05`), `maxMerges` (`2`), `maxMergedMs` (`20000`). Only
+`tailFinalizeBudgetMs` stays a fixed internal constant (a latency safety margin, not a
+detection knob — never settings-exposed, protects the sub-500ms Speed premise). New files:
+`src/constants/previewVad.json`, `src/helpers/previewVadConfig.js` (mirrors
+`whisperVad.json`/`whisperVadConfig.js`'s pattern: `DEFAULT_PREVIEW_VAD_CONFIG`,
+`clampPreviewVadField`, `sanitizePreviewVadConfig`, plus `resolvePreviewVadConfig()` — fully
+generic over `Object.keys(DEFAULTS)`, so all 11 fields flow through unchanged code). New IPC:
+`preview-vad-get-config`/`preview-vad-set-config`, `ipcHandlers.js`'s
+`_resolvePreviewVadOptions()` (dictation-only — this settings section only affects
+`start-dictation-preview`). `start-dictation-preview` builds its energy-detector options
 entirely from this — it no longer reads `_resolveWhisperVadOptions("dictation")`/Silero for
-any of these five fields, and no silent floor/cap clamps remain in that path.
+any of these fields, and no silent floor/cap clamps remain in that path. The 5 `vad`-shaped
+fields (`minSpeechDurationMs`, `minSilenceDurationMs`, `speechPadMs`, `maxSpeechDurationS`,
+`samplesOverlap`) are threaded into `createDictationBatchingSession`'s `vadConfig` option; the
+other 6 (`energyThreshold`, `minSegmentRms`, `noiseFloorFactor`, `noiseFloorAlpha`,
+`maxMerges`, `maxMergedMs`) are threaded as top-level constructor options — two different code
+paths in `DictationBatchingSession`'s constructor, per `docs/specs/vad-settings-tabs.md`
+Design.
 
 **`showTranscriptionPreview`** now only controls whether the live caption overlay window is shown
 — it does not gate whether the batching session itself runs. The overlay's cosmetic 1500ms partial

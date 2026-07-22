@@ -6512,10 +6512,35 @@ class IPCHandlers {
         // Deliberately does NOT read Silero/`_resolveWhisperVadOptions()` for
         // any field; whatever the Live Preview Sensitivity settings show is
         // exactly what runs here, with no silent floors/caps.
-        const energyVadConfig = this._resolvePreviewVadOptions();
+        const previewVadOptions = this._resolvePreviewVadOptions();
+        const {
+          minSpeechDurationMs,
+          minSilenceDurationMs,
+          speechPadMs,
+          maxSpeechDurationS,
+          samplesOverlap,
+          energyThreshold,
+          minSegmentRms,
+          noiseFloorFactor,
+          noiseFloorAlpha,
+          maxMerges,
+          maxMergedMs,
+        } = previewVadOptions;
         const isNvidia = provider === "nvidia";
         dictationPreviewSession = createDictationBatchingSession({
-          vadConfig: energyVadConfig,
+          vadConfig: {
+            minSpeechDurationMs,
+            minSilenceDurationMs,
+            speechPadMs,
+            maxSpeechDurationS,
+            samplesOverlap,
+          },
+          energyThreshold,
+          minSegmentRms,
+          noiseFloorFactor,
+          noiseFloorAlpha,
+          maxMerges,
+          maxMergedMs,
           transcribe: isNvidia ? transcribeParakeetSegment : transcribeWhisperPreviewSegment,
           // A silence boundary is only a hint: if an utterance transcribes with
           // low confidence, hold its audio and re-transcribe it merged with the

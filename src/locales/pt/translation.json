@@ -1708,6 +1708,10 @@
         "noteRecording": "Gravação de notas",
         "upload": "Enviar áudio"
       },
+      "vadTabs": {
+        "live": "Ao vivo",
+        "silero": "Detecção de atividade de voz"
+      },
       "selfHostedStreamingNote": "Requer um servidor que suporte transcrição em streaming."
     },
     "llms": {
@@ -1872,6 +1876,42 @@
           "minSilenceDurationMs": {
             "label": "Duração mínima de silêncio (ms)",
             "info": "Menor = a prévia divide sua fala em segmentos com mais frequência durante as pausas."
+          },
+          "speechPadMs": {
+            "label": "Preenchimento de fala (ms)",
+            "info": "Quanto áudio imediatamente antes da sua fala é mantido, para que o início de uma frase não seja cortado."
+          },
+          "maxSpeechDurationS": {
+            "label": "Duração máxima da fala (s)",
+            "info": "A prévia ao vivo forçará um corte e iniciará um novo segmento se você falar continuamente por mais tempo do que isso, sem pausar."
+          },
+          "samplesOverlap": {
+            "label": "Sobreposição de amostras",
+            "info": "Quanto áudio é repetido em um corte forçado, para que uma palavra dividida pelo corte não seja perdida."
+          },
+          "energyThreshold": {
+            "label": "Limiar de energia (RMS)",
+            "info": "O volume mínimo que um instante de áudio deve atingir para ser tratado como fala. Um valor menor capta falas mais baixas, mas também pode captar ruído de fundo."
+          },
+          "minSegmentRms": {
+            "label": "Volume mínimo do segmento (RMS)",
+            "info": "Um segmento reconhecido inteiro mais silencioso do que isso é descartado em vez de ser enviado para transcrição, para evitar transcrever quase silêncio."
+          },
+          "noiseFloorFactor": {
+            "label": "Fator de piso de ruído",
+            "info": "O quanto sua voz precisa subir acima do nível de ruído ambiente do seu ambiente para contar como fala. Um valor menor é mais sensível em ambientes barulhentos, mas pode captar mais ruído."
+          },
+          "noiseFloorAlpha": {
+            "label": "Taxa de adaptação do piso de ruído",
+            "info": "Com que rapidez o detector atualiza sua percepção do nível de ruído ambiente do seu ambiente. Um valor maior reage mais rápido a um ambiente ficando mais alto ou mais silencioso, mas pode deixar o detector menos estável momento a momento."
+          },
+          "maxMerges": {
+            "label": "Máximo de mesclagens",
+            "info": "Quantas frases consecutivas de baixa confiança podem ser combinadas com a próxima antes de serem aceitas como estão."
+          },
+          "maxMergedMs": {
+            "label": "Duração máxima mesclada (ms)",
+            "info": "O tempo máximo que um trecho de fala combinado/mesclado pode crescer antes de ser finalizado de qualquer forma."
           }
         }
       }

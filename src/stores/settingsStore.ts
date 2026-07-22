@@ -224,6 +224,15 @@ const NUMERIC_SETTINGS = new Set([
   "whisperVadSamplesOverlap",
   "previewVadMinSpeechDurationMs",
   "previewVadMinSilenceDurationMs",
+  "previewVadSpeechPadMs",
+  "previewVadMaxSpeechDurationS",
+  "previewVadSamplesOverlap",
+  "previewVadEnergyThreshold",
+  "previewVadMinSegmentRms",
+  "previewVadNoiseFloorFactor",
+  "previewVadNoiseFloorAlpha",
+  "previewVadMaxMerges",
+  "previewVadMaxMergedMs",
 ]);
 
 const WHISPER_VAD_DEFAULTS = whisperVadConstants.DEFAULTS;
@@ -504,6 +513,15 @@ export interface SettingsState
   whisperVadSamplesOverlap: number;
   previewVadMinSpeechDurationMs: number;
   previewVadMinSilenceDurationMs: number;
+  previewVadSpeechPadMs: number;
+  previewVadMaxSpeechDurationS: number;
+  previewVadSamplesOverlap: number;
+  previewVadEnergyThreshold: number;
+  previewVadMinSegmentRms: number;
+  previewVadNoiseFloorFactor: number;
+  previewVadNoiseFloorAlpha: number;
+  previewVadMaxMerges: number;
+  previewVadMaxMergedMs: number;
   panelStartPosition: "bottom-right" | "center" | "bottom-left";
   showTranscriptionPreview: boolean;
   autoPasteEnabled: boolean;
@@ -746,6 +764,15 @@ export interface SettingsState
   resetWhisperVad: () => void;
   setPreviewVadMinSpeechDurationMs: (value: number) => void;
   setPreviewVadMinSilenceDurationMs: (value: number) => void;
+  setPreviewVadSpeechPadMs: (value: number) => void;
+  setPreviewVadMaxSpeechDurationS: (value: number) => void;
+  setPreviewVadSamplesOverlap: (value: number) => void;
+  setPreviewVadEnergyThreshold: (value: number) => void;
+  setPreviewVadMinSegmentRms: (value: number) => void;
+  setPreviewVadNoiseFloorFactor: (value: number) => void;
+  setPreviewVadNoiseFloorAlpha: (value: number) => void;
+  setPreviewVadMaxMerges: (value: number) => void;
+  setPreviewVadMaxMergedMs: (value: number) => void;
   resetPreviewVadDefaults: () => void;
   setPanelStartPosition: (position: "bottom-right" | "center" | "bottom-left") => void;
   setShowTranscriptionPreview: (value: boolean) => void;
@@ -1162,6 +1189,42 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   previewVadMinSilenceDurationMs: clampPreviewVadValue(
     "minSilenceDurationMs",
     readString("previewVadMinSilenceDurationMs", "500")
+  ),
+  previewVadSpeechPadMs: clampPreviewVadValue(
+    "speechPadMs",
+    readString("previewVadSpeechPadMs", "100")
+  ),
+  previewVadMaxSpeechDurationS: clampPreviewVadValue(
+    "maxSpeechDurationS",
+    readString("previewVadMaxSpeechDurationS", "20")
+  ),
+  previewVadSamplesOverlap: clampPreviewVadValue(
+    "samplesOverlap",
+    readString("previewVadSamplesOverlap", "0.3")
+  ),
+  previewVadEnergyThreshold: clampPreviewVadValue(
+    "energyThreshold",
+    readString("previewVadEnergyThreshold", "0.006")
+  ),
+  previewVadMinSegmentRms: clampPreviewVadValue(
+    "minSegmentRms",
+    readString("previewVadMinSegmentRms", "0.003")
+  ),
+  previewVadNoiseFloorFactor: clampPreviewVadValue(
+    "noiseFloorFactor",
+    readString("previewVadNoiseFloorFactor", "3")
+  ),
+  previewVadNoiseFloorAlpha: clampPreviewVadValue(
+    "noiseFloorAlpha",
+    readString("previewVadNoiseFloorAlpha", "0.05")
+  ),
+  previewVadMaxMerges: clampPreviewVadValue(
+    "maxMerges",
+    readString("previewVadMaxMerges", "2")
+  ),
+  previewVadMaxMergedMs: clampPreviewVadValue(
+    "maxMergedMs",
+    readString("previewVadMaxMergedMs", "20000")
   ),
   panelStartPosition: (() => {
     const v = readString("panelStartPosition", "center");
@@ -1817,11 +1880,92 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       window.electronAPI?.setPreviewVadConfig?.({ minSilenceDurationMs: next });
     }
   },
+  setPreviewVadSpeechPadMs: (value: number) => {
+    const next = clampPreviewVadValue("speechPadMs", value);
+    if (isBrowser) localStorage.setItem("previewVadSpeechPadMs", String(next));
+    useSettingsStore.setState({ previewVadSpeechPadMs: next });
+    if (isBrowser) {
+      window.electronAPI?.setPreviewVadConfig?.({ speechPadMs: next });
+    }
+  },
+  setPreviewVadMaxSpeechDurationS: (value: number) => {
+    const next = clampPreviewVadValue("maxSpeechDurationS", value);
+    if (isBrowser) localStorage.setItem("previewVadMaxSpeechDurationS", String(next));
+    useSettingsStore.setState({ previewVadMaxSpeechDurationS: next });
+    if (isBrowser) {
+      window.electronAPI?.setPreviewVadConfig?.({ maxSpeechDurationS: next });
+    }
+  },
+  setPreviewVadSamplesOverlap: (value: number) => {
+    const next = clampPreviewVadValue("samplesOverlap", value);
+    if (isBrowser) localStorage.setItem("previewVadSamplesOverlap", String(next));
+    useSettingsStore.setState({ previewVadSamplesOverlap: next });
+    if (isBrowser) {
+      window.electronAPI?.setPreviewVadConfig?.({ samplesOverlap: next });
+    }
+  },
+  setPreviewVadEnergyThreshold: (value: number) => {
+    const next = clampPreviewVadValue("energyThreshold", value);
+    if (isBrowser) localStorage.setItem("previewVadEnergyThreshold", String(next));
+    useSettingsStore.setState({ previewVadEnergyThreshold: next });
+    if (isBrowser) {
+      window.electronAPI?.setPreviewVadConfig?.({ energyThreshold: next });
+    }
+  },
+  setPreviewVadMinSegmentRms: (value: number) => {
+    const next = clampPreviewVadValue("minSegmentRms", value);
+    if (isBrowser) localStorage.setItem("previewVadMinSegmentRms", String(next));
+    useSettingsStore.setState({ previewVadMinSegmentRms: next });
+    if (isBrowser) {
+      window.electronAPI?.setPreviewVadConfig?.({ minSegmentRms: next });
+    }
+  },
+  setPreviewVadNoiseFloorFactor: (value: number) => {
+    const next = clampPreviewVadValue("noiseFloorFactor", value);
+    if (isBrowser) localStorage.setItem("previewVadNoiseFloorFactor", String(next));
+    useSettingsStore.setState({ previewVadNoiseFloorFactor: next });
+    if (isBrowser) {
+      window.electronAPI?.setPreviewVadConfig?.({ noiseFloorFactor: next });
+    }
+  },
+  setPreviewVadNoiseFloorAlpha: (value: number) => {
+    const next = clampPreviewVadValue("noiseFloorAlpha", value);
+    if (isBrowser) localStorage.setItem("previewVadNoiseFloorAlpha", String(next));
+    useSettingsStore.setState({ previewVadNoiseFloorAlpha: next });
+    if (isBrowser) {
+      window.electronAPI?.setPreviewVadConfig?.({ noiseFloorAlpha: next });
+    }
+  },
+  setPreviewVadMaxMerges: (value: number) => {
+    const next = clampPreviewVadValue("maxMerges", value);
+    if (isBrowser) localStorage.setItem("previewVadMaxMerges", String(next));
+    useSettingsStore.setState({ previewVadMaxMerges: next });
+    if (isBrowser) {
+      window.electronAPI?.setPreviewVadConfig?.({ maxMerges: next });
+    }
+  },
+  setPreviewVadMaxMergedMs: (value: number) => {
+    const next = clampPreviewVadValue("maxMergedMs", value);
+    if (isBrowser) localStorage.setItem("previewVadMaxMergedMs", String(next));
+    useSettingsStore.setState({ previewVadMaxMergedMs: next });
+    if (isBrowser) {
+      window.electronAPI?.setPreviewVadConfig?.({ maxMergedMs: next });
+    }
+  },
   resetPreviewVadDefaults: () => {
     const d = PREVIEW_VAD_DEFAULTS;
     const next = {
       previewVadMinSpeechDurationMs: d.minSpeechDurationMs,
       previewVadMinSilenceDurationMs: d.minSilenceDurationMs,
+      previewVadSpeechPadMs: d.speechPadMs,
+      previewVadMaxSpeechDurationS: d.maxSpeechDurationS,
+      previewVadSamplesOverlap: d.samplesOverlap,
+      previewVadEnergyThreshold: d.energyThreshold,
+      previewVadMinSegmentRms: d.minSegmentRms,
+      previewVadNoiseFloorFactor: d.noiseFloorFactor,
+      previewVadNoiseFloorAlpha: d.noiseFloorAlpha,
+      previewVadMaxMerges: d.maxMerges,
+      previewVadMaxMergedMs: d.maxMergedMs,
     };
     if (isBrowser) {
       for (const [key, value] of Object.entries(next)) {
@@ -1836,6 +1980,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
         speechPadMs: d.speechPadMs,
         maxSpeechDurationS: d.maxSpeechDurationS,
         samplesOverlap: d.samplesOverlap,
+        energyThreshold: d.energyThreshold,
+        minSegmentRms: d.minSegmentRms,
+        noiseFloorFactor: d.noiseFloorFactor,
+        noiseFloorAlpha: d.noiseFloorAlpha,
+        maxMerges: d.maxMerges,
+        maxMergedMs: d.maxMergedMs,
       });
     }
   },
@@ -2638,6 +2788,15 @@ export async function initializeSettings(): Promise<void> {
       await window.electronAPI.setPreviewVadConfig?.({
         minSpeechDurationMs: currentState.previewVadMinSpeechDurationMs,
         minSilenceDurationMs: currentState.previewVadMinSilenceDurationMs,
+        speechPadMs: currentState.previewVadSpeechPadMs,
+        maxSpeechDurationS: currentState.previewVadMaxSpeechDurationS,
+        samplesOverlap: currentState.previewVadSamplesOverlap,
+        energyThreshold: currentState.previewVadEnergyThreshold,
+        minSegmentRms: currentState.previewVadMinSegmentRms,
+        noiseFloorFactor: currentState.previewVadNoiseFloorFactor,
+        noiseFloorAlpha: currentState.previewVadNoiseFloorAlpha,
+        maxMerges: currentState.previewVadMaxMerges,
+        maxMergedMs: currentState.previewVadMaxMergedMs,
       });
     } catch (err) {
       logger.warn(

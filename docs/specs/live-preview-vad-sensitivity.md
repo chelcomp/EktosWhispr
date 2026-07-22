@@ -3,6 +3,14 @@
 ## Status
 Implemented
 
+> **Superseded in part by `docs/specs/vad-settings-tabs.md`**: that follow-up spec restructures
+> the stacked "Voice Activity Detection"/"Live Preview Sensitivity" sections below into two
+> tabs, and exposes `speechPadMs`, `maxSpeechDurationS`, `samplesOverlap`, `energyThreshold`,
+> `minSegmentRms`, `noiseFloorFactor`, `noiseFloorAlpha`, `maxMerges`, `maxMergedMs` as
+> user-facing controls — this spec's own decisions to keep those "3 fields fixed, 6 constants
+> out of scope" no longer hold. This spec's decoupling design (separate namespace, separate
+> IPC, separate resolver) is unchanged and still authoritative for that part.
+
 ## TL;DR
 The live-preview overlay ("Listening...") added by `docs/specs/audio-transcription-batching.md`
 almost never shows committed text — it silently borrows the Silero VAD settings screen's

@@ -1902,6 +1902,10 @@
         "noteRecording": "Note Recording",
         "upload": "Audio Upload"
       },
+      "vadTabs": {
+        "live": "Live",
+        "silero": "Voice Activity Detection"
+      },
       "selfHostedStreamingNote": "Requires a server that supports streaming transcription."
     },
     "llms": {
@@ -2066,6 +2070,42 @@
           "minSilenceDurationMs": {
             "label": "Minimum silence duration (ms)",
             "info": "Lower = the preview breaks your speech into segments more eagerly during pauses."
+          },
+          "speechPadMs": {
+            "label": "Speech padding (ms)",
+            "info": "How much audio just before your speech is kept, so the start of a sentence isn't clipped."
+          },
+          "maxSpeechDurationS": {
+            "label": "Maximum speech duration (s)",
+            "info": "The live preview will force-cut and start a new segment if you speak continuously longer than this, without pausing."
+          },
+          "samplesOverlap": {
+            "label": "Samples overlap",
+            "info": "How much audio is repeated across a forced cut, so a word split across the cut isn't lost."
+          },
+          "energyThreshold": {
+            "label": "Energy threshold (RMS)",
+            "info": "The minimum loudness a moment of audio must reach to be treated as speech at all. Lower catches quieter speech but may also catch background noise."
+          },
+          "minSegmentRms": {
+            "label": "Minimum segment loudness (RMS)",
+            "info": "A whole recognized segment quieter than this is dropped instead of being sent for transcription, to avoid transcribing near-silence."
+          },
+          "noiseFloorFactor": {
+            "label": "Noise floor factor",
+            "info": "How far above your room's background noise level your voice must rise to count as speech. Lower is more sensitive in noisy rooms but may pick up more noise."
+          },
+          "noiseFloorAlpha": {
+            "label": "Noise floor adaptation rate",
+            "info": "How quickly the detector updates its sense of your room's background noise level. Higher reacts faster to a room getting louder or quieter, but can make the detector itself less steady moment to moment."
+          },
+          "maxMerges": {
+            "label": "Maximum merges",
+            "info": "How many low-confidence phrases in a row may be combined with the next one before being accepted as-is."
+          },
+          "maxMergedMs": {
+            "label": "Maximum merged duration (ms)",
+            "info": "The longest a combined/merged stretch of speech is allowed to grow before being finalized regardless."
           }
         }
       }

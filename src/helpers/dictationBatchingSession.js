@@ -449,4 +449,5 @@ module.exports = {
   computeRms,
   bufferRms,
   TAIL_FINALIZE_BUDGET_MS,
+  DEFAULTS,
 };

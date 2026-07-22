@@ -1571,6 +1571,12 @@ declare global {
           speechPadMs: number;
           maxSpeechDurationS: number;
           samplesOverlap: number;
+          energyThreshold: number;
+          minSegmentRms: number;
+          noiseFloorFactor: number;
+          noiseFloorAlpha: number;
+          maxMerges: number;
+          maxMergedMs: number;
         };
         error?: string;
       }>;
@@ -1580,6 +1586,12 @@ declare global {
         speechPadMs?: number;
         maxSpeechDurationS?: number;
         samplesOverlap?: number;
+        energyThreshold?: number;
+        minSegmentRms?: number;
+        noiseFloorFactor?: number;
+        noiseFloorAlpha?: number;
+        maxMerges?: number;
+        maxMergedMs?: number;
       }) => Promise<{ success: boolean; config?: Record<string, unknown>; error?: string }>;
       getPendingMeetingNoteNavigation?: () => Promise<{
         noteId: number;

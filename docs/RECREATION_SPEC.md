@@ -571,23 +571,33 @@ Nenhum dos dois engines tem encoder incremental — cada chamada de inferência 
 - `requestPartial()`: re-transcreve utterance aberto, nunca compete com commit pendente; só é agendado (timer de 1500ms) quando `showOverlay` é `true` — é puramente cosmético e nunca afeta o texto commitado/colado.
 - `finish()`: força flush, retorna `{text, segments, finalized, quality:{committedMs, lowQualityMs, totalInputMs, lowQualityRatio, coverageRatio}}`.
 
-**Configuração própria ("Live Preview Sensitivity"), independente do Silero VAD
-(`docs/specs/live-preview-vad-sensitivity.md`, implementado)**: `minSpeechDurationMs`
-(usado por `_voicedRunMs >= minSpeechDurationMs`) e `minSilenceDurationMs` (fecha o
-segmento) **não são mais lidos/derivados do `whisperVad.json`/`_resolveWhisperVadOptions()`
-do Silero** — vêm de `src/constants/previewVad.json` +
-`src/helpers/previewVadConfig.js` (`DEFAULT_PREVIEW_VAD_CONFIG`,
-`sanitizePreviewVadConfig`, `resolvePreviewVadConfig`), com defaults `minSpeechDurationMs:
-80`, `minSilenceDurationMs: 500` (validados via testes ao vivo — os defaults do Silero,
-250ms/200ms via `settingsStore.ts`, deixavam `coverageRatio` perto de 0 quando reusados por
-este detector de energia mais cru). `speechPadMs: 100`, `maxSpeechDurationS: 20`,
-`samplesOverlap: 0.3` também vêm exclusivamente deste novo namespace (constantes fixas, não
-expostas como controle de UI). Persistido via IPC própria (`preview-vad-get-config`/
-`preview-vad-set-config`), `_resolvePreviewVadOptions()` em `ipcHandlers.js`, e novas chaves
-de `localStorage` (`previewVadMinSpeechDurationMs`/`previewVadMinSilenceDurationMs`) em
-`settingsStore.ts` — sem relação de schema com o `whisperVad.json` do Silero. Configurável
-em Settings → Fala-para-Texto → "Live Preview Sensitivity", visualmente distinta da seção
-Silero "Voice Activity Detection" acima.
+**Configuração própria ("Live"), independente do Silero VAD
+(`docs/specs/live-preview-vad-sensitivity.md`, `docs/specs/vad-settings-tabs.md`,
+implementados)**: nenhum dos 11 campos que o construtor de `DictationBatchingSession`
+consome (exceto `tailFinalizeBudgetMs`, margem interna de segurança de latência nunca
+exposta) **é lido/derivado do `whisperVad.json`/`_resolveWhisperVadOptions()` do Silero** —
+vêm de `src/constants/previewVad.json` + `src/helpers/previewVadConfig.js`
+(`DEFAULT_PREVIEW_VAD_CONFIG`, `clampPreviewVadField`, `sanitizePreviewVadConfig`,
+`resolvePreviewVadConfig` — genérico sobre `Object.keys(DEFAULTS)`, todos os 11 campos
+passam pelo mesmo código sem alteração estrutural). Os 10 campos expostos como controle de
+UI, com seus defaults (idênticos às constantes internas hardcoded originais de
+`dictationBatchingSession.js`, sem mudança de comportamento na migração): `minSpeechDurationMs:
+80`, `minSilenceDurationMs: 500`, `speechPadMs: 100`, `maxSpeechDurationS: 20`,
+`samplesOverlap: 0.3`, `energyThreshold: 0.006`, `minSegmentRms: 0.003`, `noiseFloorFactor: 3`,
+`noiseFloorAlpha: 0.05`, `maxMerges: 2`, `maxMergedMs: 20000`. Persistido via IPC própria
+(`preview-vad-get-config`/`preview-vad-set-config`), `_resolvePreviewVadOptions()` em
+`ipcHandlers.js`, e chaves de `localStorage` correspondentes em `settingsStore.ts` — sem
+relação de schema com o `whisperVad.json` do Silero. `start-dictation-preview` distribui os 5
+campos de formato `vad` (`minSpeechDurationMs`, `minSilenceDurationMs`, `speechPadMs`,
+`maxSpeechDurationS`, `samplesOverlap`) dentro de `vadConfig`, e os outros 6
+(`energyThreshold`, `minSegmentRms`, `noiseFloorFactor`, `noiseFloorAlpha`, `maxMerges`,
+`maxMergedMs`) como opções de nível superior do construtor — dois caminhos de código
+diferentes dentro de `DictationBatchingSession`. Configurável em Settings → Fala-para-Texto →
+Ditado, agora em duas abas — "Live" (este detector de energia, 10 campos, aba padrão) e
+"Voice Activity Detection" (Silero, seção inalterada) — via `DictationVadTabs`
+(`SettingsPage.tsx`, export nomeado, reutiliza o padrão `ProviderTabs`/`useSubTab`/`TabPanel`
+já usado por `SpeechToTextTabs`/`LlmsTabs`; sem barra de abas quando o provedor local é
+nvidia/Parakeet, já que Silero não se aplica).
 
 #### 2.6.3 Sinal de confiança por engine (`src/utils/transcriptionQualityHeuristics.js`)
 - **Whisper**: `isWhisperSegmentLowQuality` via limiares clássicos (`avg_logprob < -1.0` ou `compression_ratio > 2.4`), usando os campos reais de `avg_logprob`/`compression_ratio`/`no_speech_prob` do whisper.cpp.

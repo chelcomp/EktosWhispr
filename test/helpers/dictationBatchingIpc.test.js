@@ -53,6 +53,7 @@ Module._load = function patchedLoad(request, parent, isMain) {
       ...real,
       createDictationBatchingSession: (options) => {
         capturedVadConfigs.push(options?.vadConfig);
+        capturedOptions.push(options);
         return real.createDictationBatchingSession(options);
       },
     };
@@ -67,6 +68,7 @@ process.env.NODE_ENV = "test";
 // exactly what vadConfig was passed, without needing to modify the real
 // dictationBatchingSession module.
 const capturedVadConfigs = [];
+const capturedOptions = [];
 
 const IPCHandlers = require("../../src/helpers/ipcHandlers.js");
 
@@ -155,11 +157,13 @@ test("start-dictation-preview always creates a batching session for a Parakeet (
 
 test("start-dictation-preview builds its energy-VAD vadConfig from Preview VAD settings, never from Silero", async () => {
   capturedVadConfigs.length = 0;
+  capturedOptions.length = 0;
   const transcribeLocalParakeetCalls = [];
 
   // Deliberately distinctive Silero sentinel values that must NOT reach the
-  // energy detector for any of the five shared fields (Design's "no
-  // cross-contamination" property).
+  // energy detector for any of the now-10 preview-VAD fields (Design's "no
+  // cross-contamination" property), including `threshold`, which has no
+  // energy-detector equivalent at all.
   const sileroSentinel = {
     vadConfig: {
       threshold: 0.5,
@@ -170,13 +174,22 @@ test("start-dictation-preview builds its energy-VAD vadConfig from Preview VAD s
       samplesOverlap: 0.999,
     },
   };
-  // Distinct Preview VAD sentinel values that SHOULD reach the detector.
+  // Distinct Preview VAD sentinel values that SHOULD reach the detector —
+  // the full 10-field set (5 `vadConfig`-shaped + 6 top-level constructor
+  // options, minus the overlap of `minSpeechDurationMs`/`minSilenceDurationMs`
+  // counted once).
   const previewVadSentinel = {
-    minSpeechDurationMs: 80,
-    minSilenceDurationMs: 500,
-    speechPadMs: 100,
-    maxSpeechDurationS: 20,
-    samplesOverlap: 0.3,
+    minSpeechDurationMs: 81,
+    minSilenceDurationMs: 501,
+    speechPadMs: 101,
+    maxSpeechDurationS: 21,
+    samplesOverlap: 0.31,
+    energyThreshold: 0.007,
+    minSegmentRms: 0.004,
+    noiseFloorFactor: 4,
+    noiseFloorAlpha: 0.06,
+    maxMerges: 3,
+    maxMergedMs: 21000,
   };
 
   const { start, stop } = createHandlerUnderTest({
@@ -196,17 +209,52 @@ test("start-dictation-preview builds its energy-VAD vadConfig from Preview VAD s
 
   assert.equal(capturedVadConfigs.length, 1, "exactly one batching session must have been created");
   const usedVadConfig = capturedVadConfigs[0];
+  const usedOptions = capturedOptions[0];
 
   assert.deepEqual(
     usedVadConfig,
-    previewVadSentinel,
-    "start-dictation-preview must build its vadConfig entirely from the Preview VAD settings"
+    {
+      minSpeechDurationMs: previewVadSentinel.minSpeechDurationMs,
+      minSilenceDurationMs: previewVadSentinel.minSilenceDurationMs,
+      speechPadMs: previewVadSentinel.speechPadMs,
+      maxSpeechDurationS: previewVadSentinel.maxSpeechDurationS,
+      samplesOverlap: previewVadSentinel.samplesOverlap,
+    },
+    "start-dictation-preview must build its vadConfig entirely from the Preview VAD settings' vad-shaped fields"
   );
   for (const key of Object.keys(sileroSentinel.vadConfig)) {
     assert.notEqual(
       usedVadConfig[key],
       sileroSentinel.vadConfig[key],
       `Silero sentinel value for "${key}" must not have reached the energy detector`
+    );
+  }
+  assert.notEqual(
+    usedOptions.threshold,
+    sileroSentinel.vadConfig.threshold,
+    "Silero's threshold must never reach the energy detector's constructor options at all"
+  );
+
+  // The 6 non-vad-shaped fields must be threaded as TOP-LEVEL constructor
+  // options (Requirement 7), not nested under vadConfig.
+  const topLevelFields = [
+    "energyThreshold",
+    "minSegmentRms",
+    "noiseFloorFactor",
+    "noiseFloorAlpha",
+    "maxMerges",
+    "maxMergedMs",
+  ];
+  for (const key of topLevelFields) {
+    assert.equal(
+      usedOptions[key],
+      previewVadSentinel[key],
+      `"${key}" must be threaded as a top-level createDictationBatchingSession option`
+    );
+    assert.equal(
+      usedVadConfig[key],
+      undefined,
+      `"${key}" must NOT be nested inside vadConfig`
     );
   }
 });
