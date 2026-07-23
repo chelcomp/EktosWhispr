@@ -6,7 +6,6 @@ import {
 } from "../../../models/ModelRegistry";
 import { getSettings } from "../../../stores/settingsStore";
 import { getEnterpriseCallSettings } from "../enterpriseSettings";
-import { wrapCleanupTranscript } from "../../../config/prompts";
 import logger from "../../../utils/logger";
 
 export const enterpriseProvider: InferenceProvider = {
@@ -25,7 +24,7 @@ export const enterpriseProvider: InferenceProvider = {
     logger.logReasoning("ENTERPRISE_START", { provider: enterpriseId, model, agentName });
 
     const systemPrompt = config.systemPrompt || ctx.getSystemPrompt(agentName);
-    const userContent = config.systemPrompt ? text : wrapCleanupTranscript(text);
+    const userContent = text;
     const { supportsTemperature } = getOpenAiApiConfig(model);
 
     const startTime = Date.now();

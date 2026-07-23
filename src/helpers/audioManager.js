@@ -36,7 +36,7 @@ import {
   resolveDictationAgentReachability,
   shouldCaptureScreenContext,
 } from "./dictationRouting";
-import { resolvePrompt, appendScreenContextSuffix } from "../config/prompts";
+import { resolvePrompt } from "../config/prompts";
 import { ScreenContextCache, OCR_REUSE_WINDOW_MS } from "./screenContextCache";
 import { syncService } from "../services/SyncService.js";
 import { evaluateFinishedRecording } from "./recordingValidation";
@@ -210,16 +210,13 @@ function resolveReasoningRoute(text, settings, agentName, voiceAgentRequested, s
             ? settings.dictationAgentCustomApiKey || undefined
             : undefined,
         disableThinking: settings.dictationAgentDisableThinking,
-        systemPrompt: appendScreenContextSuffix(
-          resolvePrompt("dictationAgent", {
-            agentName,
-            language: settings.preferredLanguage,
-            customDictionary: getDictionaryHintWords(settings),
-            uiLanguage: settings.uiLanguage,
-          }),
-          screenContextText,
-          settings.uiLanguage
-        ),
+        systemPrompt: resolvePrompt("dictationAgent", {
+          agentName,
+          language: settings.preferredLanguage,
+          customDictionary: getDictionaryHintWords(settings),
+          uiLanguage: settings.uiLanguage,
+          screenContextText: screenContextText || null,
+        }),
       },
     };
   }
@@ -228,10 +225,12 @@ function resolveReasoningRoute(text, settings, agentName, voiceAgentRequested, s
       kind: "cleanup",
       config: {
         disableThinking: settings.cleanupDisableThinking,
-        // Threaded through for ReasoningService's cleanup prompt assembly to
-        // append via appendScreenContextSuffix() — see
-        // docs/specs/active-window-screen-context.md's "Threading OCR text
-        // into the LLM context" Design section.
+        // Threaded through for ReasoningService's cleanup prompt assembly,
+        // which forwards it into resolvePrompt()'s ResolvePromptOptions —
+        // see docs/specs/prompt-template-placeholders.md's "New mechanism"
+        // Design section and docs/specs/active-window-screen-context.md's
+        // "Threading OCR text into the LLM context" Design section for where
+        // screenContextText itself comes from.
         screenContextText: screenContextText || null,
       },
     };

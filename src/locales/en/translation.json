@@ -1130,7 +1130,13 @@
       "cautionLabel": "Caution",
       "cautionTextPrefix": "Modifying this prompt may affect transcription quality.",
       "cautionTextSuffix": "Keep the {{agentName}} placeholder to preserve agent detection.",
-      "placeholder": "Enter your custom system prompt..."
+      "placeholder": "Enter your custom system prompt...",
+      "placeholdersTitle": "Available placeholders",
+      "placeholderAgentName": "Your agent's configured name.",
+      "placeholderLanguages": "The language instruction for your selected transcription language. Empty when no language instruction applies.",
+      "placeholderUserDictionary": "Your Custom Dictionary words. Empty when the dictionary is empty.",
+      "placeholderScreenOcr": "OCR'd text captured from your active window at the time of dictation. Empty when no screen context was captured.",
+      "placeholdersOmitNote": "Omitting a placeholder means its content will not appear anywhere in the prompt — there is no automatic addition at the end."
     },
     "tabs": {
       "customize": "Customize",

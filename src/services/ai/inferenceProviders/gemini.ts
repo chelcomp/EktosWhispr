@@ -2,7 +2,6 @@ import type { InferenceProvider } from "./types";
 import { getCloudModel } from "../../../models/ModelRegistry";
 import { withRetry, createApiRetryStrategy } from "../../../utils/retry";
 import { API_ENDPOINTS, TOKEN_LIMITS } from "../../../config/constants";
-import { wrapCleanupTranscript } from "../../../config/prompts";
 import logger from "../../../utils/logger";
 
 interface GeminiResponse {
@@ -30,7 +29,7 @@ export const geminiProvider: InferenceProvider = {
     logger.logReasoning("GEMINI_API_KEY", { hasApiKey: !!apiKey, keyLength: apiKey?.length || 0 });
 
     const systemPrompt = config.systemPrompt || ctx.getSystemPrompt(agentName);
-    const userContent = config.systemPrompt ? text : wrapCleanupTranscript(text);
+    const userContent = text;
 
     const generationConfig: GeminiGenerationConfig = {
       temperature: config.temperature ?? (config.systemPrompt ? 0.3 : 0),

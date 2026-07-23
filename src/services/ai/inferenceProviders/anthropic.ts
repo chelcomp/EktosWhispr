@@ -1,5 +1,4 @@
 import type { InferenceProvider } from "./types";
-import { wrapCleanupTranscript } from "../../../config/prompts";
 import logger from "../../../utils/logger";
 
 export const anthropicProvider: InferenceProvider = {
@@ -13,7 +12,7 @@ export const anthropicProvider: InferenceProvider = {
     const startTime = Date.now();
 
     const systemPrompt = config.systemPrompt || ctx.getSystemPrompt(agentName);
-    const userContent = config.systemPrompt ? text : wrapCleanupTranscript(text);
+    const userContent = text;
 
     logger.logReasoning("ANTHROPIC_REQUEST", {
       model,

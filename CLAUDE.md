@@ -837,8 +837,15 @@ step). See `docs/specs/active-window-screen-context.md` for the full design.
   instead of re-capturing — purely in-memory, process-lifetime only.
 - **Threading into the LLM request**: `audioManager.js`'s `warmupScreenContext()` fires
   alongside `warmupTranscriptionEngine()`/`warmupReasoningServer()`, bounded-awaited before
-  the cleanup/agent request is assembled (`appendScreenContextSuffix()` in
-  `src/config/prompts/index.ts`, re-exported from `src/config/prompts.ts`).
+  the cleanup/agent request is assembled. The captured OCR text is passed as
+  `screenContextText` into `resolvePrompt()`'s options and substituted into the system
+  prompt at the `{{screen-ocr}}` placeholder token by `applyPromptPlaceholders()` in
+  `src/config/prompts/index.ts` (positional, no auto-append — see
+  `docs/specs/prompt-template-placeholders.md`). The default `cleanupPrompt`/`fullPrompt`
+  templates ship with that token, so screen context lands where the token sits. (This
+  supersedes the earlier suffix-append mechanism, `appendScreenContextSuffix()`, which is
+  now only a thin back-compat wrapper retained for its test; it is no longer called at
+  request-assembly time.)
 - **History**: the `screen_context_text` column on `transcriptions` (nullable, additive
   migration) stores whatever screen context actually got used for a given turn.
 - **Persistence/retention**: screenshots are never persisted to disk by default

@@ -1,5 +1,4 @@
 import type { InferenceProvider } from "./types";
-import { wrapCleanupTranscript } from "../../../config/prompts";
 import { getLocalGenerationParams } from "../../../stores/settingsStore";
 import logger from "../../../utils/logger";
 
@@ -14,7 +13,7 @@ export const localProvider: InferenceProvider = {
     const startTime = Date.now();
 
     const systemPrompt = config.systemPrompt || ctx.getSystemPrompt(agentName);
-    const userContent = config.systemPrompt ? text : wrapCleanupTranscript(text);
+    const userContent = text;
 
     // Honor the user's manual sampling parameters (Local Model settings) on
     // every local inference, regardless of which local model is selected.

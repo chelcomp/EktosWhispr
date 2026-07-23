@@ -12,7 +12,6 @@ import { withRetry, createApiRetryStrategy } from "../utils/retry";
 import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, ensureV1Suffix } from "../config/constants";
 import logger from "../utils/logger";
 import { getSettings, getLocalGenerationParams, isCloudCleanupMode } from "../stores/settingsStore";
-import { wrapCleanupTranscript } from "../config/prompts";
 import { streamText, stepCountIs } from "ai";
 import { getAIModel } from "./ai/providers";
 import { createEnterpriseChatModel } from "./ai/enterpriseChatModel";
@@ -152,15 +151,14 @@ class ReasoningService extends BaseReasoningService {
     providerName: string
   ): Promise<string> {
     // No systemPrompt override means the default cleanup path: a deterministic
-    // transform, so zero temperature and a delimited transcript.
+    // transform, so zero temperature.
     const isCleanup = !config.systemPrompt;
     const systemPrompt =
       config.systemPrompt || this.getSystemPrompt(agentName, config.screenContextText);
-    const userPrompt = isCleanup ? wrapCleanupTranscript(text) : text;
 
     const messages = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
+      { role: "user", content: text },
     ];
 
     const requestBody: any = {
@@ -403,10 +401,9 @@ class ReasoningService extends BaseReasoningService {
     const systemPrompt =
       config.systemPrompt ||
       this.providerContext.getSystemPrompt(agentName, config.screenContextText);
-    const userContent = config.systemPrompt ? text : wrapCleanupTranscript(text);
     const messages = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: userContent },
+      { role: "user", content: text },
     ];
 
     logger.logReasoning("LOCAL_STREAM_START", { model: trimmedModel, agentName, messages });

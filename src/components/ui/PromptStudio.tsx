@@ -103,7 +103,9 @@ export default function PromptStudio({ className = "", kind = "cleanup" }: Promp
     setTestResult("");
 
     try {
-      const cleanupProvider = effectiveCleanupModel ? getModelProvider(effectiveCleanupModel) : "openai";
+      const cleanupProvider = effectiveCleanupModel
+        ? getModelProvider(effectiveCleanupModel)
+        : "openai";
 
       logger.debug(
         "PromptStudio test starting",
@@ -278,6 +280,33 @@ export default function PromptStudio({ className = "", kind = "cleanup" }: Promp
             </div>
 
             <div className="px-5 py-4">
+              <p className="text-xs font-medium text-foreground mb-2">
+                {t("promptStudio.edit.placeholdersTitle")}
+              </p>
+              <ul className="space-y-1.5">
+                {[
+                  { token: "{{agentName}}", desc: t("promptStudio.edit.placeholderAgentName") },
+                  { token: "{{languages}}", desc: t("promptStudio.edit.placeholderLanguages") },
+                  {
+                    token: "{{user-dictionary}}",
+                    desc: t("promptStudio.edit.placeholderUserDictionary"),
+                  },
+                  { token: "{{screen-ocr}}", desc: t("promptStudio.edit.placeholderScreenOcr") },
+                ].map(({ token, desc }) => (
+                  <li key={token} className="text-xs text-muted-foreground leading-relaxed">
+                    <code className="text-xs bg-muted/50 px-1 py-0.5 rounded font-mono">
+                      {token}
+                    </code>{" "}
+                    {desc}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted-foreground/70 leading-relaxed mt-2">
+                {t("promptStudio.edit.placeholdersOmitNote")}
+              </p>
+            </div>
+
+            <div className="px-5 py-4">
               <Textarea
                 value={editedPrompt}
                 onChange={(e) => setEditedPrompt(e.target.value)}
@@ -318,9 +347,9 @@ export default function PromptStudio({ className = "", kind = "cleanup" }: Promp
 
             const effectiveModel = effectiveCleanupModel;
             const displayModel = effectiveModel
-              ? (cleanupProvider === "local"
-                  ? (modelRegistry.getModel(effectiveModel)?.model.name ?? effectiveModel)
-                  : effectiveModel)
+              ? cleanupProvider === "local"
+                ? (modelRegistry.getModel(effectiveModel)?.model.name ?? effectiveModel)
+                : effectiveModel
               : t("promptStudio.test.none");
             const displayProvider =
               cleanupProvider === "custom"
