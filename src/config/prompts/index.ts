@@ -11,6 +11,10 @@ export interface ResolvePromptOptions {
   uiLanguage?: string;
   language?: string;
   customDictionary?: string[];
+  // Threaded straight into applySubstitutions()'s {{screen-ocr}} placeholder —
+  // see docs/specs/prompt-template-placeholders.md's "New mechanism" Design
+  // section. null/undefined/empty all resolve the placeholder to "".
+  screenContextText?: string | null;
 }
 
 export function resolvePrompt(kind: PromptKind, opts: ResolvePromptOptions): string {
@@ -27,51 +31,77 @@ export function getDefaultPromptText(kind: PromptKind, uiLanguage?: string): str
   return t(def.i18nKey, { defaultValue: def.fallback });
 }
 
-// The cleanup prompt tells the model its input arrives between <transcript>
-// tags; the trailing line re-anchors the output contract right after the
-// transcript, where models weight instructions most. Mirrors api/reason.ts
-// in ektoswhispr-api.
-export function wrapCleanupTranscript(text: string): string {
-  return `<transcript>\n${text}\n</transcript>\n\nOutput only the cleaned transcript.`;
+function buildLanguageBlock(language?: string): string {
+  const instruction = getLanguageInstruction(language);
+  return instruction ? "\n\n" + instruction : "";
 }
 
+function buildDictionaryBlock(customDictionary?: string[], uiLanguage?: string): string {
+  if (!customDictionary?.length) return "";
+  const locale = normalizeUiLanguage(uiLanguage || "en");
+  const suffix = i18n.getFixedT(locale, "prompts")("dictionarySuffix", {
+    defaultValue: enPrompts.dictionarySuffix,
+  });
+  return suffix + customDictionary.join(", ");
+}
+
+// Mirrors buildDictionaryBlock() — a no-op when there's no screen text
+// (feature off/gated-off/capture-or-OCR failed). See
+// docs/specs/active-window-screen-context.md's "Threading OCR text into the
+// LLM context" Design section for where screenContextText itself comes from.
+function buildScreenContextBlock(screenText?: string | null, uiLanguage?: string): string {
+  if (!screenText?.trim()) return "";
+  const locale = normalizeUiLanguage(uiLanguage || "en");
+  const leadIn = i18n.getFixedT(locale, "prompts")("screenContextLeadIn", {
+    defaultValue: enPrompts.screenContextLeadIn,
+  });
+  return `${leadIn}\n<screen_context>\n${screenText}\n</screen_context>`;
+}
+
+// Thin wrapper kept for existing call sites (e.g. actionProcessingStore.ts's
+// note-formatting prompt assembly) that append the dictionary block directly
+// onto an arbitrary prompt string outside the {{user-dictionary}} placeholder
+// mechanism below.
 export function appendDictionarySuffix(
   prompt: string,
   customDictionary?: string[],
   uiLanguage?: string
 ): string {
-  if (!customDictionary?.length) return prompt;
-  const locale = normalizeUiLanguage(uiLanguage || "en");
-  const suffix = i18n.getFixedT(locale, "prompts")("dictionarySuffix", {
-    defaultValue: enPrompts.dictionarySuffix,
-  });
-  return prompt + suffix + customDictionary.join(", ");
+  return prompt + buildDictionaryBlock(customDictionary, uiLanguage);
 }
 
-// Mirrors appendDictionarySuffix() — appended after the dictionary suffix so
-// the LLM sees dictionary hints, then screen context, in a stable order. A
-// no-op when there's no screen text (feature off/gated-off/capture-or-OCR
-// failed). See docs/specs/active-window-screen-context.md's "Threading OCR
-// text into the LLM context" Design section.
+// Thin wrapper kept for test/components/prompts.screenContext.test.js and any
+// other direct caller expecting the old prompt+block append shape.
 export function appendScreenContextSuffix(
   prompt: string,
   screenText?: string | null,
   uiLanguage?: string
 ): string {
-  if (!screenText?.trim()) return prompt;
-  const locale = normalizeUiLanguage(uiLanguage || "en");
-  const leadIn = i18n.getFixedT(locale, "prompts")("screenContextLeadIn", {
-    defaultValue: enPrompts.screenContextLeadIn,
-  });
-  return `${prompt}${leadIn}\n<screen_context>\n${screenText}\n</screen_context>`;
+  return prompt + buildScreenContextBlock(screenText, uiLanguage);
+}
+
+// Pure, positional placeholder substitution — no append-if-missing. A token
+// absent from `template` contributes nothing; each present token is replaced
+// with its block (or "" when the block is empty, so the token cleanly
+// disappears with no surrounding artifact). See
+// docs/specs/prompt-template-placeholders.md Requirement 5.
+export function applyPromptPlaceholders(
+  template: string,
+  blocks: { languageBlock: string; dictionaryBlock: string; screenContextBlock: string }
+): string {
+  return template
+    .replace(/\{\{languages\}\}/g, blocks.languageBlock)
+    .replace(/\{\{user-dictionary\}\}/g, blocks.dictionaryBlock)
+    .replace(/\{\{screen-ocr\}\}/g, blocks.screenContextBlock);
 }
 
 function applySubstitutions(template: string, opts: ResolvePromptOptions): string {
   const name = opts.agentName?.trim() || "Assistant";
-  let prompt = template.replace(/\{\{agentName\}\}/g, name);
+  const prompt = template.replace(/\{\{agentName\}\}/g, name);
 
-  const langInstruction = getLanguageInstruction(opts.language);
-  if (langInstruction) prompt += "\n\n" + langInstruction;
+  const languageBlock = buildLanguageBlock(opts.language);
+  const dictionaryBlock = buildDictionaryBlock(opts.customDictionary, opts.uiLanguage);
+  const screenContextBlock = buildScreenContextBlock(opts.screenContextText, opts.uiLanguage);
 
-  return appendDictionarySuffix(prompt, opts.customDictionary, opts.uiLanguage);
+  return applyPromptPlaceholders(prompt, { languageBlock, dictionaryBlock, screenContextBlock });
 }

@@ -1,4 +1,4 @@
-import { getCleanupSystemPrompt, appendScreenContextSuffix } from "../config/prompts";
+import { getCleanupSystemPrompt } from "../config/prompts";
 import { getSettings } from "../stores/settingsStore";
 import { getDictionaryHintWords } from "../utils/snippets";
 
@@ -11,11 +11,13 @@ export interface ReasoningConfig {
   repeatPenalty?: number;
   contextSize?: number;
   systemPrompt?: string;
-  // Threaded through from resolveReasoningRoute()'s "cleanup" branch (see
-  // docs/specs/active-window-screen-context.md's "Threading OCR text into
-  // the LLM context" Design section) — the agent route already appends this
-  // to its own systemPrompt directly; the cleanup route has no systemPrompt
-  // override slot, so getSystemPrompt() appends it here instead.
+  // Threaded through from resolveReasoningRoute()'s "cleanup" branch, all the
+  // way into resolvePrompt()'s ResolvePromptOptions.screenContextText, where
+  // it substitutes the {{screen-ocr}} placeholder in place (see
+  // docs/specs/prompt-template-placeholders.md). The agent route
+  // (audioManager.js) threads it the same way via its own resolvePrompt()
+  // call; the cleanup route has no systemPrompt override slot, so
+  // getSystemPrompt() below forwards it to getCleanupSystemPrompt() instead.
   screenContextText?: string | null;
   lanUrl?: string;
   baseUrl?: string;
@@ -40,13 +42,13 @@ export abstract class BaseReasoningService {
   }
 
   protected getSystemPrompt(agentName: string | null, screenContextText?: string | null): string {
-    const base = getCleanupSystemPrompt(
+    return getCleanupSystemPrompt(
       agentName,
       this.getCustomDictionary(),
       this.getPreferredLanguage(),
-      this.getUiLanguage()
+      this.getUiLanguage(),
+      screenContextText
     );
-    return appendScreenContextSuffix(base, screenContextText, this.getUiLanguage());
   }
 
   protected calculateMaxTokens(

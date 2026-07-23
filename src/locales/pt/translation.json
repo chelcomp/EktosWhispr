@@ -1021,7 +1021,13 @@
       "cautionLabel": "Cuidado",
       "cautionTextPrefix": "Modificar este prompt pode afetar a qualidade da transcrição.",
       "cautionTextSuffix": "Mantenha o marcador {{agentName}} para preservar a detecção do agente.",
-      "placeholder": "Digite seu prompt de sistema personalizado..."
+      "placeholder": "Digite seu prompt de sistema personalizado...",
+      "placeholdersTitle": "Marcadores disponíveis",
+      "placeholderAgentName": "O nome configurado do seu agente.",
+      "placeholderLanguages": "A instrução de idioma para o idioma de transcrição selecionado. Vazio quando nenhuma instrução de idioma se aplica.",
+      "placeholderUserDictionary": "As palavras do seu Dicionário Personalizado. Vazio quando o dicionário está vazio.",
+      "placeholderScreenOcr": "Texto extraído por OCR da sua janela ativa no momento do ditado. Vazio quando nenhum contexto de tela foi capturado.",
+      "placeholdersOmitNote": "Omitir um marcador significa que o conteúdo dele não aparecerá em nenhum lugar do prompt — não há adição automática no final."
     },
     "tabs": {
       "customize": "Personalizar",

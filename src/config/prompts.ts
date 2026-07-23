@@ -5,7 +5,7 @@ export {
   getDefaultPromptText,
   appendDictionarySuffix,
   appendScreenContextSuffix,
-  wrapCleanupTranscript,
+  applyPromptPlaceholders,
 } from "./prompts/index";
 export { PROMPT_KINDS, PROMPT_KIND_LIST, type PromptKind } from "./prompts/registry";
 export { detectAgentName } from "./agentDetection";
@@ -14,9 +14,16 @@ export function getCleanupSystemPrompt(
   agentName: string | null,
   customDictionary?: string[],
   language?: string,
-  uiLanguage?: string
+  uiLanguage?: string,
+  screenContextText?: string | null
 ): string {
-  return resolvePrompt("cleanup", { agentName, language, customDictionary, uiLanguage });
+  return resolvePrompt("cleanup", {
+    agentName,
+    language,
+    customDictionary,
+    uiLanguage,
+    screenContextText,
+  });
 }
 
 export function getWordBoost(customDictionary?: string[]): string[] {
