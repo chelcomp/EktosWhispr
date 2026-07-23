@@ -1,7 +1,7 @@
 # Dynamic Prompt Vocabulary (Session-Aware Whisper Prompt Enrichment)
 
 ## Status
-Approved
+Implemented
 
 ## TL;DR
 Add a second, *automatic* source of Whisper prompt words alongside the existing static
@@ -36,24 +36,28 @@ symbols, and merged into the existing `initialPrompt` pipeline.
   original casing is fully uppercase/uppercase+digits survive starting at 2 chars; ordinary
   lowercase tokens (and 2-letter fillers like "uh"/"um") keep the 3+ char floor and stopword
   filtering as before.
-- **Decision (this revision) — persistent recency-weighted stats + in-memory semantic
-  grouping**, agreed with the project owner:
-  1. New `vocabulary_stats` table (`word`, `count`, `last_seen_at`) accumulates across the
-     app's entire lifetime, not just the last-20-rows session window. Scoring blends a
-     recency-decayed long-term signal with the existing session score, so consistently-used
-     vocabulary surfaces even when not said in the last 20 dictations, without outranking
-     what's actively relevant right now.
-  2. A grouping step merges near-duplicate word variants (e.g. "deploy"/"deployment") via
-     cosine similarity over embeddings from the **existing** ONNX utility process — **no
-     Qdrant, no new sidecar, no persistent vector store**. Only a few hundred words at most
-     are ever compared, brute-force, in memory, then discarded; this reuses existing
-     embedding-*generation* capability, not the removed vector *store* (see Non-goals).
+- **Decision (this revision) — persistent recency-weighted stats**, agreed with the project
+  owner: new `vocabulary_stats` table (`word`, `count`, `last_seen_at`) accumulates across the
+  app's entire lifetime, not just the last-20-rows session window. Scoring blends a
+  recency-decayed long-term signal with the existing session score, so consistently-used
+  vocabulary surfaces even when not said in the last 20 dictations, without outranking what's
+  actively relevant right now.
+- **Decision (descoped) — in-memory semantic grouping (R11) dropped entirely**: an earlier
+  revision of this spec proposed merging near-duplicate word variants (e.g.
+  "deploy"/"deployment") via cosine similarity over embeddings from the ONNX utility process.
+  This was never shippable: `src/workers/onnxWorker.js` does not expose a generic text-embedding
+  request handler in production, so the feature would have silently no-op'd (via its own
+  graceful-degradation fallback) on every real install. Rather than ship dead code behind a
+  flag that's never turned on, R11 and its `groupSimilarVocabulary()` implementation have been
+  removed from scope entirely — not shipped, not deferred behind a toggle. Near-duplicate word
+  variants are simply scored/output as separate entries in v1; revisit only if a real
+  text-embedding request type is added to `onnxWorker.js` for another feature first.
 - Practical impact: transcription accuracy improves for proper nouns/jargon the user has
   recently said or that appear on their screen, without the user manually maintaining a
   dictionary entry for every project name, teammate, or app they use that week — and this now
   extends to vocabulary the user has used consistently over a long period (not just their last
-  20 dictations), with near-duplicate word variants intelligently merged rather than diluting
-  each other's score. Short acronyms like "API"/"K8s" are no longer silently dropped.
+  20 dictations). Short acronyms like "API"/"K8s" are no longer silently dropped. Near-duplicate
+  word variants (e.g. "deploy"/"deployment") are not merged — this is out of scope for v1.
 
 ## Problem / Goal
 
@@ -188,34 +192,12 @@ requiring any user action, while respecting the app's speed and privacy premises
       `dynamicPromptVocabularyEnabled` and the underlying transcription history is deleted via
       existing "Clear All" flows is a Non-goal (see below) that can be revisited later if
       needed.
-11. **In-memory semantic-proximity grouping (no Qdrant, no new sidecar, no persistent vector
-    store)**:
-    - R11a. Before final scoring/output-capping, near-duplicate/related vocabulary entries
-      (e.g. "deploy"/"deploys"/"deployment", a mis-transcribed "kubernete" vs. "kubernetes")
-      are grouped and merged into a single representative entry (highest-scoring variant's
-      casing/spelling wins, scores combined) so they don't dilute each other's rank or waste
-      output-cap slots on near-duplicates.
-    - R11b. Grouping is computed via cosine-similarity comparison over text embeddings
-      generated **on-demand, in-process** by reusing the existing ONNX utility process
-      (`src/helpers/onnxWorkerClient.js` → `src/workers/onnxWorker.js`, per CLAUDE.md's
-      Process Separation section) — the same infra already used for other text-embedding
-      needs in this codebase. No new sidecar or child process is spawned for this feature.
-    - R11c. Comparison is brute-force in memory (all-pairs cosine similarity over the current
-      candidate vocabulary set) — explicitly **no vector index, no persistent vector
-      storage, no Qdrant reintroduction**. This is bounded and cheap because the candidate
-      set for this feature is expected to be, at most, a few hundred words/terms (the R5
-      output cap plus whatever additional candidates the long-term stats surface before
-      capping) — never large enough to need an index. If a future revision needs a much
-      larger candidate set, that would require re-evaluating this approach, but v1's expected
-      volume does not.
-    - R11d. A similarity threshold (checked-in constant, e.g. cosine similarity ≥ 0.85 as a
-      starting value — tunable during implementation/validation, not user-configurable)
-      decides whether two tokens are merged as "the same concept" vs. kept as distinct
-      entries.
-    - R11e. If the ONNX worker is unavailable/fails to spawn/times out, grouping degrades
-      gracefully to "no grouping" (each token stands alone, scored independently) rather than
-      blocking or failing the whole dynamic-vocabulary feature — consistent with Premise #5
-      (graceful degradation for optional components).
+**R11 (in-memory semantic-proximity grouping) — descoped.** An earlier revision proposed
+grouping near-duplicate vocabulary entries via cosine similarity over ONNX-worker-generated
+embeddings. This has been dropped from scope entirely: `src/workers/onnxWorker.js` exposes no
+generic text-embedding request handler in production, so the feature could never actually run
+there — it would only ever hit its own graceful-degradation no-op path. See TL;DR for the full
+rationale. Near-duplicate word variants are not merged in v1.
 
 ## Non-goals
 
@@ -227,17 +209,12 @@ requiring any user action, while respecting the app's speed and privacy premises
   prompt.
 - No TF-IDF. Frequency + recency-decay is the only scoring signal (R10b) — no more
   sophisticated ranking model in v1.
-- **No persistent vector store, no Qdrant reintroduction, no new sidecar/service** — this
-  spec does reuse the existing ONNX worker's *embedding-generation* capability (R11) for
-  small, on-demand, in-memory cosine-similarity grouping, but this is explicitly not a
-  reversal of `docs/specs/remove-qdrant-dependency.md`: what was removed there was the
-  persistent, *indexed vector database* (Qdrant) used for search over an unbounded/growing
-  corpus. This feature's candidate set is small and bounded (at most a few hundred words —
-  see R11c), computed fresh per invocation, held only in memory for the duration of one
-  scoring pass, and never written to any index or disk-backed vector store. Embedding
-  *generation* was never the removed piece — the ONNX worker already exists and already
-  generates embeddings for other purposes; this spec adds a new, bounded, ephemeral *consumer*
-  of that existing capability, not new persistent infrastructure.
+- **No persistent vector store, no Qdrant reintroduction, no new sidecar/service, and no
+  ONNX-embedding-based semantic grouping at all** — an earlier revision of this spec proposed
+  reusing the existing ONNX worker's embedding-generation capability for small, in-memory
+  cosine-similarity grouping (R11); that requirement has been descoped entirely (see TL;DR),
+  not merely deferred, since `src/workers/onnxWorker.js` has no generic text-embedding request
+  handler in production. This spec introduces no new persistent infrastructure of any kind.
 - No per-language stopword completeness beyond English + Portuguese in v1; other
   transcription languages simply get less filler-filtering (dynamic vocab still works, just
   less precisely filtered) rather than blocking the feature on translating stopword lists
@@ -307,38 +284,6 @@ without any native binary or database mock beyond a plain array of row objects.
   outrank a word the user is actively using right now). Words present in only one source
   simply have the other term as `0`. This keeps R10b's three-tier ordering (session-recent >
   long-term-frequent-but-stale > brand-new one-off) achievable without a more complex model.
-
-### In-memory semantic grouping: `groupSimilarVocabulary()`
-
-- New function in `src/helpers/dynamicPromptVocabulary.js`:
-  `async groupSimilarVocabulary(candidates, { embedText, similarityThreshold })`, where
-  `candidates` is the pre-grouping `Array<{ word, score }>` and `embedText` is an injected
-  async function `(text) => Promise<number[]>` (defaults to a thin wrapper calling
-  `onnxWorkerClient.request("embed-text", { text })` or equivalent existing request type —
-  exact method name to be confirmed against `src/workers/onnxWorker.js`'s existing embedding
-  request handler at implementation time). Injecting `embedText` as a parameter (rather than
-  importing `onnxWorkerClient` directly) is what makes this unit-testable without a running
-  ONNX worker — tests pass a stub/mock `embedText`.
-- Algorithm: compute an embedding for each candidate word (batched into as few ONNX worker
-  requests as the existing API allows), then all-pairs cosine similarity; any pair at or
-  above `similarityThreshold` (default `0.85`, R11d) is merged into one entry — the
-  higher-scoring variant's spelling/casing is kept as the representative, and the two
-  scores are summed (so merging doesn't lose the signal, it consolidates it). Runs once per
-  scoring pass on the already-capped-or-near-capped candidate set (a few hundred words at
-  most, R11c) — not on every raw token before filtering.
-- **Graceful degradation (R11e)**: `groupSimilarVocabulary()` catches any error/timeout from
-  `embedText` (worker unavailable, spawn failure, request timeout) and returns `candidates`
-  unchanged (no grouping applied) rather than throwing — the caller
-  (`buildDynamicVocabularyPrompt()`) always gets a usable list back.
-- **No persistent vector store**: embeddings computed here are used once, in memory, for this
-  single scoring pass, and discarded — never written to `vocabulary_stats`, never cached
-  across calls beyond ordinary process memory during the synchronous grouping step. See
-  Non-goals for why this doesn't reverse the Qdrant removal decision.
-- **Speed/idle-budget note**: this step only runs at the same once-per-warmup cadence as the
-  rest of the feature (Premise #2/#3 — see "Speed & idle-budget impact" below); if the ONNX
-  worker isn't already warm, the first grouping call after a while may cold-start it, which is
-  why R11e's graceful-degradation fallback exists — the feature must never block or
-  meaningfully delay prompt assembly waiting on a cold ONNX worker spawn.
 
 ### `src/utils/languageSupport.ts` changes
 
@@ -461,15 +406,6 @@ transcription providers alike** (no local-transcription-only restriction). Concr
     `CREATE TABLE IF NOT EXISTS` against an existing database with pre-existing unrelated
     tables/data leaves that other data untouched (migration-safety regression per Premise
     #6).
-  - **`groupSimilarVocabulary()` with a stubbed embedding function**: passes a mock
-    `embedText` (deterministic, hand-crafted vectors — no real ONNX worker required, per the
-    codebase's general preference for dependency-injected test doubles over mocking Electron
-    utility-process infra directly) and asserts: (a) two candidates whose mock vectors exceed
-    `similarityThreshold` are merged into one entry with summed scores and the
-    higher-scoring variant's spelling retained; (b) candidates below the threshold remain
-    distinct entries; (c) when `embedText` rejects/throws (simulating an unavailable ONNX
-    worker), `groupSimilarVocabulary()` returns the original candidate list unchanged rather
-    than throwing (R11e graceful-degradation regression test).
 - `test/components/languageSupport.test.js` (existing file, updated):
   - New cases asserting `combineLocalTranscriptionPrompt`/`combineCloudTranscriptionPrompt`
     accept the new leading `dynamicVocabPrompt` parameter, place it first in the joined
@@ -509,9 +445,8 @@ transcription providers alike** (no local-transcription-only restriction). Concr
 - `CLAUDE.md` §13 (Custom Dictionary / prompt-combination pipeline): add a paragraph
   documenting the new third prompt source, its settings keys, the updated
   `combineLocalTranscriptionPrompt`/`combineCloudTranscriptionPrompt` signatures, the R3a
-  acronym-exception rule, the `vocabulary_stats` table + recency-decay scoring, and the
-  ONNX-worker-based grouping step (with an explicit callout that this does not reintroduce
-  Qdrant), once implemented.
+  acronym-exception rule, and the `vocabulary_stats` table + recency-decay scoring, once
+  implemented. Do not document any semantic-grouping step — R11 was descoped, not shipped.
 - `docs/RECREATION_SPEC.md`: update §0 and the relevant settings-keys/database-schema
   listings to reflect the two new localStorage keys, the new `vocabulary_stats` table, and
   the updated prompt-combination/scoring behavior.
