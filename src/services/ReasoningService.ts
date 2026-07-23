@@ -66,8 +66,7 @@ class ReasoningService extends BaseReasoningService {
   }
 
   private async getApiKey(
-    provider:
-      "openai" | "anthropic" | "gemini" | "groq" | "custom" | "openrouter"
+    provider: "openai" | "anthropic" | "gemini" | "groq" | "custom" | "openrouter"
   ): Promise<string> {
     if (provider === "custom") {
       let customKey = "";
@@ -155,7 +154,8 @@ class ReasoningService extends BaseReasoningService {
     // No systemPrompt override means the default cleanup path: a deterministic
     // transform, so zero temperature and a delimited transcript.
     const isCleanup = !config.systemPrompt;
-    const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName);
+    const systemPrompt =
+      config.systemPrompt || this.getSystemPrompt(agentName, config.screenContextText);
     const userPrompt = isCleanup ? wrapCleanupTranscript(text) : text;
 
     const messages = [
@@ -336,7 +336,9 @@ class ReasoningService extends BaseReasoningService {
 
     console.log(`[LLM] ▶ provider=${providerId} model=${trimmedModel}`);
     console.log(`[LLM] System prompt:\n${config.systemPrompt || "(default cleanup prompt)"}`);
-    console.log(`[LLM] User input (${text.length} chars):\n${text.length > 800 ? text.substring(0, 800) + "…" : text}`);
+    console.log(
+      `[LLM] User input (${text.length} chars):\n${text.length > 800 ? text.substring(0, 800) + "…" : text}`
+    );
 
     const startTime = Date.now();
     try {
@@ -348,7 +350,9 @@ class ReasoningService extends BaseReasoningService {
         ctx: this.providerContext,
       });
 
-      console.log(`[LLM] ◀ output (${result.length} chars, ${Date.now() - startTime}ms):\n${result.length > 800 ? result.substring(0, 800) + "…" : result}`);
+      console.log(
+        `[LLM] ◀ output (${result.length} chars, ${Date.now() - startTime}ms):\n${result.length > 800 ? result.substring(0, 800) + "…" : result}`
+      );
 
       logger.logReasoning("PROVIDER_SUCCESS", {
         provider: providerId,
@@ -394,7 +398,9 @@ class ReasoningService extends BaseReasoningService {
       throw new Error("No reasoning model selected");
     }
 
-    const systemPrompt = config.systemPrompt || this.providerContext.getSystemPrompt(agentName);
+    const systemPrompt =
+      config.systemPrompt ||
+      this.providerContext.getSystemPrompt(agentName, config.screenContextText);
     const userContent = config.systemPrompt ? text : wrapCleanupTranscript(text);
     const messages = [
       { role: "system", content: systemPrompt },
@@ -441,14 +447,7 @@ class ReasoningService extends BaseReasoningService {
     provider: string,
     config: ReasoningConfig & { systemPrompt: string }
   ): AsyncGenerator<string, void, unknown> {
-    const cloudProviders = [
-      "openai",
-      "groq",
-      "gemini",
-      "anthropic",
-      "custom",
-      "openrouter",
-    ];
+    const cloudProviders = ["openai", "groq", "gemini", "anthropic", "custom", "openrouter"];
     const isLocalProvider = !cloudProviders.includes(provider);
 
     const settings = getSettings();
@@ -668,14 +667,7 @@ class ReasoningService extends BaseReasoningService {
     // even when a stale enterprise provider id is left in the scope's settings.
     const isEnterprise = !lanOverride && isEnterpriseProvider(provider);
 
-    const cloudProviders = [
-      "openai",
-      "groq",
-      "gemini",
-      "anthropic",
-      "custom",
-      "openrouter",
-    ];
+    const cloudProviders = ["openai", "groq", "gemini", "anthropic", "custom", "openrouter"];
     const isLocalProvider = !isEnterprise && !cloudProviders.includes(provider);
 
     const settings = getSettings();
@@ -772,7 +764,7 @@ class ReasoningService extends BaseReasoningService {
       stopWhen: stepCountIs(tools ? ReasoningService.MAX_TOOL_STEPS : 1),
       abortSignal: abortController.signal,
       ...(useTemperature
-        ? { temperature: localParams ? localParams.temperature : config.temperature ?? 0.3 }
+        ? { temperature: localParams ? localParams.temperature : (config.temperature ?? 0.3) }
         : {}),
       maxOutputTokens: localParams ? localParams.maxTokens : config.maxTokens || 4096,
       ...(localParams ? { topP: localParams.topP, topK: localParams.topK } : {}),
@@ -832,7 +824,18 @@ class ReasoningService extends BaseReasoningService {
       systemPrompt?: string;
       tools?: Array<{ name: string; description: string; parameters: Record<string, unknown> }>;
     }
-  ): AsyncGenerator<{ type: string; text?: string; id?: string; name?: string; arguments?: string; finishReason?: string }, void, unknown> {
+  ): AsyncGenerator<
+    {
+      type: string;
+      text?: string;
+      id?: string;
+      name?: string;
+      arguments?: string;
+      finishReason?: string;
+    },
+    void,
+    unknown
+  > {
     throw new Error("Cloud agent streaming is not available in this version");
     yield;
   }
@@ -1002,14 +1005,7 @@ class ReasoningService extends BaseReasoningService {
   }
 
   clearApiKeyCache(
-    provider?:
-      | "openai"
-      | "anthropic"
-      | "gemini"
-      | "groq"
-      | "mistral"
-      | "custom"
-      | "openrouter"
+    provider?: "openai" | "anthropic" | "gemini" | "groq" | "mistral" | "custom" | "openrouter"
   ): void {
     if (provider) {
       if (provider !== "custom") {
