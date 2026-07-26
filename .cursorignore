@@ -1,0 +1,9 @@
+# Cursor ignore patterns
+# Files and directories listed here will be ignored by the Cursor AI agent.
+# Similar to .gitignore.
+
+node_modules/
+dist/
+build/
+.env
+*.log
