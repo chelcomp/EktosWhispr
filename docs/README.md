@@ -1,63 +1,90 @@
-# Documentation Map
+# EktosWhispr Documentation Map
 
-Index of every doc in this repo — what it's for, who reads it, and when it goes stale. Read this file first; it tells you which other file actually answers your question instead of guessing from a filename.
+This is the top-level index for all project documentation. Start here to find what you need.
 
-## Start here
+---
 
-| Doc                                  | Purpose                                                                                                                                                                                       |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`../README.md`](../README.md)       | Project overview, features, screenshots, quick start, download links.                                                                                                                         |
-| [`../CLAUDE.md`](../CLAUDE.md)       | Technical reference for AI assistants: architecture, file responsibilities, IPC, conventions, and the mandatory spec-driven / pre-commit-review workflow. Read this before touching any code. |
-| [`../CHANGELOG.md`](../CHANGELOG.md) | Version history.                                                                                                                                                                              |
+## Core Reference
 
-## Ground truth vs. target state — read this before trusting any architecture doc
+| Document | Purpose |
+|----------|---------|
+| [`CLAUDE.md`](../CLAUDE.md) | **Quick index** for AI assistants — commands, gotchas, key links |
+| [`premises.md`](../premises.md) | 7 non-negotiable product premises (privacy, performance, speed, single-instance, graceful degradation, migration safety, data retention) |
+| [`workflow.md`](../workflow.md) | Mandatory development workflow: spec-driven, worktree+PR, pr-reviewer gate |
+| [`RECREATION_SPEC.md`](../RECREATION_SPEC.md) | **Authoritative current behavior** — §0 lists known divergences from CLAUDE.md |
 
-Two documents describe "what the app does," at different points in time, and they can disagree:
+---
 
-- [`RECREATION_SPEC.md`](RECREATION_SPEC.md) — **current/actual behavior**, reverse-engineered directly from the source by independent research passes. Its **§0 "Divergências Importantes vs. CLAUDE.md"** lists every place CLAUDE.md's description doesn't match the real code. When CLAUDE.md and RECREATION_SPEC.md disagree, trust RECREATION_SPEC.md and the code itself.
-- [`specs/`](specs/) — **target state to build toward**. One file per planned feature/refactor/fix, produced by the `spec-planner` agent and implemented by `spec-executor`. See [`specs/README.md`](specs/README.md) for the `Draft`/`Approved`/`Implemented` status convention.
+## Architecture
 
-`CLAUDE.md` is the day-to-day reference and should be kept in sync as specs land, but it is not the authority on current behavior — RECREATION_SPEC.md and the source are.
+| Document | Purpose |
+|----------|---------|
+| [`architecture/index.md`](architecture/index.md) | Architecture folder index |
+| [`architecture/overview.md`](architecture/overview.md) | High-level: dual-window Electron, process separation, sidecars, data flow |
+| [`architecture/file-map.md`](architecture/file-map.md) | Complete file tree with responsibilities |
+| [`architecture/data-flow.md`](architecture/data-flow.md) | Index to detailed flow docs (dictation, meeting, screen-context, etc.) |
+| [`architecture/ipc-registry.md`](architecture/ipc-registry.md) | Complete IPC channel registry (~250 channels) |
+| [`architecture/settings-sync.md`](architecture/settings-sync.md) | Two-sources-of-truth pattern (localStorage ↔ .env) |
+| [`architecture/native-binaries.md`](architecture/native-binaries.md) | All native binaries with build/download scripts |
+| [`architecture/model-lifecycle.md`](architecture/model-lifecycle.md) | On-demand Whisper/Parakeet/llama-server lifecycle |
 
-## Reference (operational / security)
+---
 
-| Doc                                            | Purpose                                                                                                                  |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| [`network-allowlist.md`](network-allowlist.md) | Outbound hosts the app contacts, by feature — for firewall/proxy/DNS-filter configuration.                               |
-| [`SECURITY.md`](SECURITY.md)                   | Vulnerability reporting process and security model (credential storage, context isolation, scope).                       |
-| [`DEPENDENCIES.md`](DEPENDENCIES.md)           | npm packages, native binaries (built vs. downloaded), and on-demand model downloads — version pinning and update policy. |
+## Specifications (Target State)
 
-## Guides (end users / support)
+| Document | Purpose |
+|----------|---------|
+| [`specs/index.md`](specs/index.md) | Specs folder index with template |
+| [`specs/*.md`](specs/) | Individual implementation specs (see index for list) |
 
-| Doc                                                              | Purpose                                                                                           |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| [`guides/TROUBLESHOOTING.md`](guides/TROUBLESHOOTING.md)         | Symptom → fix table for the most common issues, per platform.                                     |
-| [`guides/DEBUG.md`](guides/DEBUG.md)                             | How to enable verbose logging and where log files live, per platform.                             |
-| [`guides/LOCAL_WHISPER_SETUP.md`](guides/LOCAL_WHISPER_SETUP.md) | Local whisper.cpp model setup, selection, and troubleshooting.                                    |
-| [`SETUP.md`](SETUP.md)                                           | Building/running from source: prerequisites, native binary compilation, packaging, quality gates. |
+**Spec lifecycle**: Draft → Approved → Implemented — see `workflow.md`
 
-## Contributing
+---
 
-| Doc                                                        | Purpose                                                                             |
-| ---------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| [`../.github/CONTRIBUTING.md`](../.github/CONTRIBUTING.md) | How to file issues, report security problems, and submit PRs.                       |
-| [`TESTING.md`](TESTING.md)                                 | Test layout (`test/`), how to run the suite and subsets, and coverage expectations. |
+## Platform-Specific
 
-## AI agents (`.claude/agents/`)
+| Document | Purpose |
+|----------|---------|
+| [`platforms/index.md`](platforms/index.md) | Platform docs index |
+| [`platforms/windows.md`](platforms/windows.md) | Windows: PTT, WASAPI, native binaries |
+| [`platforms/macos.md`](platforms/macos.md) | macOS: Globe key, AudioTap, notarization |
+| [`platforms/linux.md`](platforms/linux.md) | Linux: X11/Wayland, PipeWire, clipboard |
+| [`platforms/wayland-hotkeys.md`](platforms/wayland-hotkeys.md) | GNOME/Hyprland/KDE D-Bus hotkeys |
 
-These are the subagents this repo's harness uses for spec-driven development. See [`../CLAUDE.md`](../CLAUDE.md) ("AI Assistant Workflow" sections) for how they chain together.
+---
 
-| Agent                                                                      | Role                                                                                                                                     |
-| -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| [`../.claude/agents/spec-planner.md`](../.claude/agents/spec-planner.md)   | Plans a change: writes/updates a spec under `specs/`. Never touches application code.                                                    |
-| [`../.claude/agents/spec-executor.md`](../.claude/agents/spec-executor.md) | Implements an `Approved` spec, runs its Validation Plan, then hands off to `pr-reviewer`.                                                |
-| [`../.claude/agents/pr-reviewer.md`](../.claude/agents/pr-reviewer.md)     | Pre-commit/PR gate: tests, lint, typecheck, build, bug review, and documentation compliance (this map + CLAUDE.md + RECREATION_SPEC.md). |
+## Development Guides
 
-## Not general documentation (tool-specific state — don't edit by hand)
+| Document | Purpose |
+|----------|---------|
+| [`guides/index.md`](guides/index.md) | Guides folder index |
+| [`guides/development-workflow.md`](guides/development-workflow.md) | Spec-driven + worktree+PR + review gate |
+| [`guides/testing.md`](guides/testing.md) | Test structure, runners, mandatory rules |
+| [`guides/debugging.md`](guides/debugging.md) | Debug logging, log locations, common flows |
+| [`guides/build.md`](guides/build.md) | Build, packaging, platform notes |
+| [`guides/adding-features.md`](guides/adding-features.md) | IPC, settings, components, sidecars checklist |
+| [`guides/common-issues.md`](guides/common-issues.md) | Troubleshooting audio, transcription, clipboard, build |
 
-- `.serena/memories/` — Serena MCP's own project memory, not part of this doc set.
-- `agent-skills/ektoswhispr-cli/SKILL.md` — Claude Skill reference for scripting against the desktop app's local loopback bridge (`src/helpers/cliBridge.js`). This offline fork has no cloud API — do not reintroduce cloud/remote-backend documentation here without verifying it against real source first (see the divergence note above).
+---
 
-## Keeping this map accurate
+## How to Navigate
 
-Whenever a doc is added, moved, or removed: update this file in the same change. When a `docs/specs/*.md` entry is marked `Implemented`, make sure `CLAUDE.md` and `RECREATION_SPEC.md` were updated to match (per that spec's Validation Plan) — this map assumes both stay current.
+- **New to the project?** → Start with `CLAUDE.md` + `premises.md` + `workflow.md`
+- **Need to understand architecture?** → `architecture/overview.md` → `architecture/file-map.md`
+- **Implementing a feature?** → Create spec in `specs/` → follow `workflow.md`
+- **Debugging?** → `guides/debugging.md` + `guides/common-issues.md`
+- **Building?** → `guides/build.md`
+- **Platform-specific?** → `platforms/` index
+- **Current behavior diverges from docs?** → Check `RECREATION_SPEC.md` §0
+
+---
+
+## Documentation Update Rule
+
+**Every spec implementation** updates:
+1. The spec file → `Status: Implemented`
+2. `RECREATION_SPEC.md` §0 (divergences) + relevant sections
+3. Folder `index.md` files (this file, `architecture/index.md`, `specs/index.md`, `platforms/index.md`, `guides/index.md`)
+4. `CLAUDE.md` if new commands/gotchas added
+
+**No stale docs.** If it's not updated, the iteration isn't done.
