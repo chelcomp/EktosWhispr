@@ -299,6 +299,12 @@ $RECYCLE.BIN/
 .zencoder/
 skills/
 
+# Git worktrees
+.wt/
+
+# Memory heap snapshots
+*.heapsnapshot
+
 # OS generated files
 .DS_Store
 .DS_Store?

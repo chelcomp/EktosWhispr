@@ -2,24 +2,18 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./button";
 import { Textarea } from "./textarea";
-import {
-  Eye,
-  Edit3,
-  Play,
-  Save,
-  RotateCcw,
-  Copy,
-  TestTube,
-  AlertTriangle,
-  Check,
-} from "lucide-react";
+import { Edit3, Play, Save, RotateCcw, TestTube, AlertTriangle, Copy } from "lucide-react";
 import { AlertDialog } from "./dialog";
 import { useDialogs } from "../../hooks/useDialogs";
 import { useAgentName } from "../../utils/agentName";
 import ReasoningService from "../../services/ReasoningService";
 import { getModelProvider, modelRegistry } from "../../models/ModelRegistry";
 import logger from "../../utils/logger";
-import { getDefaultPromptText, type PromptKind } from "../../config/prompts";
+import {
+  getDefaultPromptText,
+  getDefaultSystemInstructions,
+  type PromptKind,
+} from "../../config/prompts";
 import { useSettingsStore } from "../../stores/settingsStore";
 
 interface PromptStudioProps {
@@ -49,11 +43,10 @@ const PROVIDER_CONFIG: Record<string, ProviderConfig> = {
 
 export default function PromptStudio({ className = "", kind = "cleanup" }: PromptStudioProps) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<"current" | "edit" | "test">("current");
+  const [activeTab, setActiveTab] = useState<"edit" | "test">("edit");
   const [testText, setTestText] = useState(() => t("promptStudio.defaultTestInput"));
   const [testResult, setTestResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [copiedPrompt, setCopiedPrompt] = useState(false);
 
   const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
   const { agentName } = useAgentName();
@@ -69,12 +62,19 @@ export default function PromptStudio({ className = "", kind = "cleanup" }: Promp
   const effectiveCleanupModel = cleanupMode === "local" ? localModel : cleanupModel;
 
   const customPrompt = useSettingsStore((s) => s.customPrompts[kind]);
+  const customSystemInstructions = useSettingsStore((s) => s.customSystemInstructions[kind]);
   const setCustomPrompt = useSettingsStore((s) => s.setCustomPrompt);
+  const setCustomSystemInstructions = useSettingsStore((s) => s.setCustomSystemInstructions);
   const defaultPrompt = getDefaultPromptText(kind, uiLanguage);
+  const defaultSystemInstructions = getDefaultSystemInstructions(kind, uiLanguage);
   const [editedPrompt, setEditedPrompt] = useState(customPrompt || defaultPrompt);
+  const [editedSystemInstructions, setEditedSystemInstructions] = useState(
+    customSystemInstructions || defaultSystemInstructions
+  );
 
   const savePrompt = () => {
     setCustomPrompt(kind, editedPrompt);
+    setCustomSystemInstructions(kind, editedSystemInstructions);
     showAlertDialog({
       title: t("promptStudio.dialogs.saved.title"),
       description: t("promptStudio.dialogs.saved.description"),
@@ -83,7 +83,9 @@ export default function PromptStudio({ className = "", kind = "cleanup" }: Promp
 
   const resetToDefault = () => {
     setEditedPrompt(defaultPrompt);
+    setEditedSystemInstructions(defaultSystemInstructions);
     setCustomPrompt(kind, "");
+    setCustomSystemInstructions(kind, "");
     showAlertDialog({
       title: t("promptStudio.dialogs.reset.title"),
       description: t("promptStudio.dialogs.reset.description"),
@@ -92,8 +94,6 @@ export default function PromptStudio({ className = "", kind = "cleanup" }: Promp
 
   const copyText = (text: string) => {
     navigator.clipboard.writeText(text);
-    setCopiedPrompt(true);
-    setTimeout(() => setCopiedPrompt(false), 2000);
   };
 
   const testPrompt = async () => {
@@ -152,15 +152,18 @@ export default function PromptStudio({ className = "", kind = "cleanup" }: Promp
 
       const modelToUse = effectiveCleanupModel;
 
-      const previous = customPrompt;
+      const previousPrompt = customPrompt;
+      const previousSystem = customSystemInstructions;
       setCustomPrompt(kind, editedPrompt);
+      setCustomSystemInstructions(kind, editedSystemInstructions);
       try {
         const result = await ReasoningService.processText(testText, modelToUse, agentName, {
           disableThinking: useSettingsStore.getState().cleanupDisableThinking,
         });
         setTestResult(result);
       } finally {
-        setCustomPrompt(kind, previous);
+        setCustomPrompt(kind, previousPrompt);
+        setCustomSystemInstructions(kind, previousSystem);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -177,11 +180,8 @@ export default function PromptStudio({ className = "", kind = "cleanup" }: Promp
   };
 
   const isAgentAddressed = testText.toLowerCase().includes(agentName.toLowerCase());
-  const isCustomPrompt = customPrompt.length > 0;
-  const currentPrompt = customPrompt || defaultPrompt;
 
   const tabs = [
-    { id: "current" as const, label: t("promptStudio.tabs.view"), icon: Eye },
     { id: "edit" as const, label: t("promptStudio.tabs.customize"), icon: Edit3 },
     { id: "test" as const, label: t("promptStudio.tabs.test"), icon: TestTube },
   ];
@@ -219,50 +219,6 @@ export default function PromptStudio({ className = "", kind = "cleanup" }: Promp
           })}
         </div>
 
-        {/* ── View Tab ── */}
-        {activeTab === "current" && (
-          <div className="divide-y divide-border/40 dark:divide-border-subtle">
-            <div className="px-5 py-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider">
-                    {isCustomPrompt
-                      ? t("promptStudio.view.customPrompt")
-                      : t("promptStudio.view.defaultPrompt")}
-                  </p>
-                  {isCustomPrompt && (
-                    <span className="text-xs font-semibold uppercase tracking-wider px-1.5 py-px rounded-full bg-primary/10 text-primary">
-                      {t("promptStudio.view.modified")}
-                    </span>
-                  )}
-                </div>
-                <Button
-                  onClick={() => copyText(currentPrompt)}
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                >
-                  {copiedPrompt ? (
-                    <>
-                      <Check className="w-3 h-3 mr-1 text-success" />{" "}
-                      {t("promptStudio.common.copied")}
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3 mr-1" /> {t("promptStudio.common.copy")}
-                    </>
-                  )}
-                </Button>
-              </div>
-              <div className="bg-muted/30 dark:bg-surface-raised/30 border border-border/30 rounded-lg p-4 max-h-80 overflow-y-auto">
-                <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                  {currentPrompt.replace(/\{\{agentName\}\}/g, agentName)}
-                </pre>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ── Edit Tab ── */}
         {activeTab === "edit" && (
           <div className="divide-y divide-border/40 dark:divide-border-subtle">
@@ -292,6 +248,10 @@ export default function PromptStudio({ className = "", kind = "cleanup" }: Promp
                     desc: t("promptStudio.edit.placeholderUserDictionary"),
                   },
                   { token: "{{screen-ocr}}", desc: t("promptStudio.edit.placeholderScreenOcr") },
+                  {
+                    token: "{{user-transcription}}",
+                    desc: t("promptStudio.edit.placeholderUserTranscription"),
+                  },
                 ].map(({ token, desc }) => (
                   <li key={token} className="text-xs text-muted-foreground leading-relaxed">
                     <code className="text-xs bg-muted/50 px-1 py-0.5 rounded font-mono">
@@ -307,16 +267,31 @@ export default function PromptStudio({ className = "", kind = "cleanup" }: Promp
             </div>
 
             <div className="px-5 py-4">
+              <p className="text-xs font-medium text-foreground mb-2">
+                {t("promptStudio.edit.systemPromptLabel")}
+              </p>
+              <Textarea
+                value={editedSystemInstructions}
+                onChange={(e) => setEditedSystemInstructions(e.target.value)}
+                rows={10}
+                className="font-mono text-xs leading-relaxed"
+                placeholder={t("promptStudio.edit.systemPromptPlaceholder")}
+              />
+            </div>
+
+            <div className="px-5 py-4">
+              <p className="text-xs font-medium text-foreground mb-2">
+                {t("promptStudio.edit.userPromptLabel")}
+              </p>
               <Textarea
                 value={editedPrompt}
                 onChange={(e) => setEditedPrompt(e.target.value)}
-                rows={16}
+                rows={10}
                 className="font-mono text-xs leading-relaxed"
-                placeholder={t("promptStudio.edit.placeholder")}
+                placeholder={t("promptStudio.edit.userPromptPlaceholder")}
               />
               <p className="text-xs text-muted-foreground/50 mt-2">
-                {t("promptStudio.edit.agentNameLabel")}{" "}
-                <span className="font-medium text-foreground">{agentName}</span>
+                {t("promptStudio.edit.userPromptNote")}
               </p>
             </div>
 

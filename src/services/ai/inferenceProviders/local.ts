@@ -12,8 +12,10 @@ export const localProvider: InferenceProvider = {
     logger.logReasoning("LOCAL_START", { model, agentName, environment: "browser" });
     const startTime = Date.now();
 
-    const systemPrompt = config.systemPrompt || ctx.getSystemPrompt(agentName);
-    const userContent = text;
+    const systemPrompt = config.systemPrompt || ctx.getSystemPrompt(agentName, config.screenContextText);
+    const userContent = config.systemPrompt
+      ? text
+      : ctx.getUserPrompt(agentName, config.screenContextText, text);
 
     // Honor the user's manual sampling parameters (Local Model settings) on
     // every local inference, regardless of which local model is selected.

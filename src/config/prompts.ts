@@ -1,8 +1,11 @@
-import { resolvePrompt } from "./prompts/index";
+import { resolvePrompt, resolveSystemPrompt, resolveUserPrompt } from "./prompts/index";
 
 export {
   resolvePrompt,
+  resolveSystemPrompt,
+  resolveUserPrompt,
   getDefaultPromptText,
+  getDefaultSystemInstructions,
   appendDictionarySuffix,
   appendScreenContextSuffix,
   applyPromptPlaceholders,
@@ -15,14 +18,34 @@ export function getCleanupSystemPrompt(
   customDictionary?: string[],
   language?: string,
   uiLanguage?: string,
-  screenContextText?: string | null
+  screenContextText?: string | null,
+  userTranscription?: string
 ): string {
-  return resolvePrompt("cleanup", {
+  return resolveSystemPrompt("cleanup", {
     agentName,
     language,
     customDictionary,
     uiLanguage,
     screenContextText,
+    userTranscription,
+  });
+}
+
+export function getCleanupUserPrompt(
+  agentName: string | null,
+  customDictionary?: string[],
+  language?: string,
+  uiLanguage?: string,
+  screenContextText?: string | null,
+  userTranscription?: string
+): string {
+  return resolveUserPrompt("cleanup", {
+    agentName,
+    language,
+    customDictionary,
+    uiLanguage,
+    screenContextText,
+    userTranscription,
   });
 }
 
