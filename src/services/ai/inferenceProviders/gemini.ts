@@ -28,8 +28,10 @@ export const geminiProvider: InferenceProvider = {
     const apiKey = await ctx.getApiKey("gemini");
     logger.logReasoning("GEMINI_API_KEY", { hasApiKey: !!apiKey, keyLength: apiKey?.length || 0 });
 
-    const systemPrompt = config.systemPrompt || ctx.getSystemPrompt(agentName);
-    const userContent = text;
+    const systemPrompt = config.systemPrompt || ctx.getSystemPrompt(agentName, config.screenContextText);
+    const userContent = config.systemPrompt
+      ? text
+      : ctx.getUserPrompt(agentName, config.screenContextText, text);
 
     const generationConfig: GeminiGenerationConfig = {
       temperature: config.temperature ?? (config.systemPrompt ? 0.3 : 0),

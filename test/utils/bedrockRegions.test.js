@@ -4,16 +4,38 @@ const assert = require("node:assert/strict");
 // Requires Node's native TypeScript type-stripping (Node >= 22.6 with
 // --experimental-strip-types, on by default in Node 23.6+/24). CI runs Node 24.
 
-test("bedrockGeoPrefix maps regions to inference profile geographies", async () => {
-  const { bedrockGeoPrefix } = await import("../../src/utils/bedrockRegions.ts");
+test("adjustBedrockModelForRegion maps regions to inference profile geographies", async () => {
+  const { adjustBedrockModelForRegion } = await import("../../src/utils/bedrockRegions.ts");
 
-  assert.equal(bedrockGeoPrefix("us-east-1"), "us");
-  assert.equal(bedrockGeoPrefix("us-west-2"), "us");
-  assert.equal(bedrockGeoPrefix("ca-central-1"), "us");
-  assert.equal(bedrockGeoPrefix("eu-west-2"), "eu");
-  assert.equal(bedrockGeoPrefix("eu-central-1"), "eu");
-  assert.equal(bedrockGeoPrefix("ap-southeast-1"), "apac");
-  assert.equal(bedrockGeoPrefix("ap-northeast-1"), "apac");
+  const id = "us.anthropic.claude-haiku-4-5-20251001-v1:0";
+  assert.equal(
+    adjustBedrockModelForRegion(id, "us-east-1"),
+    "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+  );
+  assert.equal(
+    adjustBedrockModelForRegion(id, "us-west-2"),
+    "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+  );
+  assert.equal(
+    adjustBedrockModelForRegion(id, "ca-central-1"),
+    "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+  );
+  assert.equal(
+    adjustBedrockModelForRegion(id, "eu-west-2"),
+    "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+  );
+  assert.equal(
+    adjustBedrockModelForRegion(id, "eu-central-1"),
+    "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+  );
+  assert.equal(
+    adjustBedrockModelForRegion(id, "ap-southeast-1"),
+    "apac.anthropic.claude-haiku-4-5-20251001-v1:0"
+  );
+  assert.equal(
+    adjustBedrockModelForRegion(id, "ap-northeast-1"),
+    "apac.anthropic.claude-haiku-4-5-20251001-v1:0"
+  );
 });
 
 test("adjustBedrockModelForRegion rewrites geo-prefixed profile IDs", async () => {

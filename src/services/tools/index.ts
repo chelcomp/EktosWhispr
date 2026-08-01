@@ -10,14 +10,10 @@ import { webSearchTool } from "./webSearchTool";
 export { ToolRegistry } from "./ToolRegistry";
 export type { ToolDefinition, ToolResult } from "./ToolRegistry";
 
-interface ToolRegistrySettings {
-  cloudBackupEnabled: boolean;
-}
-
-export function createToolRegistry(settings: ToolRegistrySettings): ToolRegistry {
+export function createToolRegistry(): ToolRegistry {
   const registry = new ToolRegistry();
 
-  registry.register(createSearchNotesTool({ useCloudSearch: false }));
+  registry.register(createSearchNotesTool());
   registry.register(getNoteTool);
   registry.register(createNoteTool);
   registry.register(updateNoteTool);

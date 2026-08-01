@@ -3,6 +3,11 @@ import type { ReasoningConfig } from "../../BaseReasoningService";
 export interface ProviderContext {
   getApiKey(provider: string): Promise<string>;
   getSystemPrompt(agentName: string | null, screenContextText?: string | null): string;
+  getUserPrompt(
+    agentName: string | null,
+    screenContextText?: string | null,
+    userTranscription?: string
+  ): string;
   getCustomDictionary(): string[];
   getPreferredLanguage(): string;
   getUiLanguage(): string;

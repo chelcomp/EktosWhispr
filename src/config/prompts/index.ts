@@ -15,12 +15,36 @@ export interface ResolvePromptOptions {
   // see docs/specs/prompt-template-placeholders.md's "New mechanism" Design
   // section. null/undefined/empty all resolve the placeholder to "".
   screenContextText?: string | null;
+  // Threaded straight into applySubstitutions()'s {{user-transcription}} placeholder —
+  // contains the raw dictated speech that needs to be cleaned up
+  userTranscription?: string;
+}
+
+// Resolves ONLY the system template (custom or default) with placeholder
+// substitution. System and user templates are resolved independently so the
+// cleanup route can send them as separate [system, user] messages.
+export function resolveSystemPrompt(kind: PromptKind, opts: ResolvePromptOptions): string {
+  const store = useSettingsStore.getState();
+  const customSystem = store.customSystemInstructions?.[kind];
+  const systemInstructions = customSystem || getDefaultSystemInstructions(kind, opts.uiLanguage);
+  return applySubstitutions(systemInstructions, opts);
+}
+
+// Resolves ONLY the user template (custom or default) with placeholder
+// substitution — including {{user-transcription}} → the dictated text.
+export function resolveUserPrompt(kind: PromptKind, opts: ResolvePromptOptions): string {
+  const store = useSettingsStore.getState();
+  const customPrompt = store.customPrompts[kind];
+  const userPromptTemplate = customPrompt || getDefaultPromptText(kind, opts.uiLanguage);
+  return applySubstitutions(userPromptTemplate, opts);
 }
 
 export function resolvePrompt(kind: PromptKind, opts: ResolvePromptOptions): string {
-  const custom = useSettingsStore.getState().customPrompts[kind];
-  const template = custom || getDefaultPromptText(kind, opts.uiLanguage);
-  return applySubstitutions(template, opts);
+  const system = resolveSystemPrompt(kind, opts);
+  const user = resolveUserPrompt(kind, opts);
+  // Combine system + user template; skip the separator when there's no system
+  // block so kinds without system instructions resolve to the template alone.
+  return system ? `${system}\n\n${user}` : user;
 }
 
 export function getDefaultPromptText(kind: PromptKind, uiLanguage?: string): string {
@@ -29,6 +53,13 @@ export function getDefaultPromptText(kind: PromptKind, uiLanguage?: string): str
   const locale = normalizeUiLanguage(uiLanguage || "en");
   const t = i18n.getFixedT(locale, "prompts");
   return t(def.i18nKey, { defaultValue: def.fallback });
+}
+
+export function getDefaultSystemInstructions(kind: PromptKind, uiLanguage?: string): string {
+  if (kind !== "cleanup") return "";
+  const locale = normalizeUiLanguage(uiLanguage || "en");
+  const t = i18n.getFixedT(locale, "prompts");
+  return t("systemInstructions", { defaultValue: "" });
 }
 
 function buildLanguageBlock(language?: string): string {
@@ -102,6 +133,12 @@ function applySubstitutions(template: string, opts: ResolvePromptOptions): strin
   const languageBlock = buildLanguageBlock(opts.language);
   const dictionaryBlock = buildDictionaryBlock(opts.customDictionary, opts.uiLanguage);
   const screenContextBlock = buildScreenContextBlock(opts.screenContextText, opts.uiLanguage);
+  const userTranscriptionBlock = opts.userTranscription ?? "";
 
-  return applyPromptPlaceholders(prompt, { languageBlock, dictionaryBlock, screenContextBlock });
+  const result = applyPromptPlaceholders(prompt, {
+    languageBlock,
+    dictionaryBlock,
+    screenContextBlock,
+  });
+  return result.replace(/\{\{user-transcription\}\}/g, userTranscriptionBlock);
 }

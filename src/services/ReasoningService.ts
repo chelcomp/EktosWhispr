@@ -47,6 +47,7 @@ class ReasoningService extends BaseReasoningService {
       getApiKey: (provider: string) =>
         this.getApiKey(provider as Parameters<ReasoningService["getApiKey"]>[0]),
       getSystemPrompt: this.getSystemPrompt.bind(this),
+      getUserPrompt: this.getUserPrompt.bind(this),
       getCustomDictionary: this.getCustomDictionary.bind(this),
       getPreferredLanguage: this.getPreferredLanguage.bind(this),
       getUiLanguage: this.getUiLanguage.bind(this),
@@ -153,13 +154,29 @@ class ReasoningService extends BaseReasoningService {
     // No systemPrompt override means the default cleanup path: a deterministic
     // transform, so zero temperature.
     const isCleanup = !config.systemPrompt;
-    const systemPrompt =
-      config.systemPrompt || this.getSystemPrompt(agentName, config.screenContextText);
 
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: text },
-    ];
+    let systemPrompt: string;
+    let messages: Array<{ role: string; content: string }>;
+
+    if (isCleanup) {
+      // For cleanup, the system message is the resolved system template and the
+      // user message is the resolved user template, with the {{user-transcription}}
+      // placeholder replaced by the actual text. The system template does not carry
+      // the transcription; the user template does.
+      systemPrompt = this.getSystemPrompt(agentName, config.screenContextText);
+      const userPrompt = this.getUserPrompt(agentName, config.screenContextText, text);
+      messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ];
+    } else {
+      systemPrompt =
+        config.systemPrompt || this.getSystemPrompt(agentName, config.screenContextText);
+      messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: text },
+      ];
+    }
 
     const requestBody: any = {
       model,
@@ -334,10 +351,17 @@ class ReasoningService extends BaseReasoningService {
 
     const resolvedSystemPromptForLog =
       config.systemPrompt || this.getSystemPrompt(agentName, config.screenContextText);
+    const resolvedUserPromptForLog = config.systemPrompt
+      ? text
+      : this.getUserPrompt(agentName, config.screenContextText, text);
     console.log(`[LLM] ▶ provider=${providerId} model=${trimmedModel}`);
     console.log(`[LLM] System prompt:\n${resolvedSystemPromptForLog}`);
     console.log(
-      `[LLM] User input (${text.length} chars):\n${text.length > 800 ? text.substring(0, 800) + "…" : text}`
+      `[LLM] User prompt (${resolvedUserPromptForLog.length} chars):\n${
+        resolvedUserPromptForLog.length > 800
+          ? resolvedUserPromptForLog.substring(0, 800) + "…"
+          : resolvedUserPromptForLog
+      }`
     );
 
     const startTime = Date.now();
@@ -401,9 +425,12 @@ class ReasoningService extends BaseReasoningService {
     const systemPrompt =
       config.systemPrompt ||
       this.providerContext.getSystemPrompt(agentName, config.screenContextText);
+    const userContent = config.systemPrompt
+      ? text
+      : this.providerContext.getUserPrompt(agentName, config.screenContextText, text);
     const messages = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: text },
+      { role: "user", content: userContent },
     ];
 
     logger.logReasoning("LOCAL_STREAM_START", { model: trimmedModel, agentName, messages });

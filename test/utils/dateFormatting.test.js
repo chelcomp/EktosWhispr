@@ -62,22 +62,3 @@ test("formatDateGroup accepts string input", async () => {
   const result = formatDateGroup(new Date().toISOString(), t);
   assert.equal(result, "controlPanel.history.dateGroups.today");
 });
-
-// formatUpcomingDateGroup
-
-test("formatUpcomingDateGroup returns today key for today's date", async () => {
-  const { formatUpcomingDateGroup } = await load();
-  const today = new Date();
-  const t = (key) => key;
-  const result = formatUpcomingDateGroup(today, t);
-  assert.equal(result, "controlPanel.history.dateGroups.today");
-});
-
-test("formatUpcomingDateGroup returns tomorrow key for tomorrow's date", async () => {
-  const { formatUpcomingDateGroup } = await load();
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const t = (key) => key;
-  const result = formatUpcomingDateGroup(tomorrow, t);
-  assert.equal(result, "upcoming.tomorrow");
-});

@@ -2,13 +2,7 @@ import type { ToolDefinition, ToolResult } from "./ToolRegistry";
 
 const MAX_CONTENT_LENGTH = 500;
 
-interface SearchToolOptions {
-  useCloudSearch: boolean;
-}
-
-export function createSearchNotesTool(options: SearchToolOptions): ToolDefinition {
-  const { useCloudSearch } = options;
-
+export function createSearchNotesTool(): ToolDefinition {
   return {
     name: "search_notes",
     description:
@@ -72,5 +66,3 @@ async function executeLocalSearch(query: string, limit: number): Promise<ToolRes
     displayText: `Found ${results.length} note${results.length === 1 ? "" : "s"} for "${query}"`,
   };
 }
-
-

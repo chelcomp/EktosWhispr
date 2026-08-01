@@ -56,7 +56,10 @@ const computeBaseUrl = (candidates: Array<string | undefined>, fallback: string)
 };
 
 const DEFAULT_OPENAI_BASE = computeBaseUrl(
-  [env.EKTOSWHISPR_OPENAI_BASE_URL as string | undefined, env.OPENAI_BASE_URL as string | undefined],
+  [
+    env.EKTOSWHISPR_OPENAI_BASE_URL as string | undefined,
+    env.OPENAI_BASE_URL as string | undefined,
+  ],
   "https://api.openai.com/v1"
 );
 
@@ -71,7 +74,6 @@ const DEFAULT_TRANSCRIPTION_BASE = computeBaseUrl(
 export const API_ENDPOINTS = {
   OPENAI_BASE: DEFAULT_OPENAI_BASE,
   OPENAI: buildApiUrl(DEFAULT_OPENAI_BASE, "/responses"),
-  OPENAI_MODELS: buildApiUrl(DEFAULT_OPENAI_BASE, "/models"),
   ANTHROPIC: "https://api.anthropic.com/v1/messages",
   GEMINI: "https://generativelanguage.googleapis.com/v1beta",
   GROQ_BASE: "https://api.groq.com/openai/v1",
@@ -80,11 +82,6 @@ export const API_ENDPOINTS = {
   OPENROUTER_BASE: "https://openrouter.ai/api/v1",
   TRANSCRIPTION_BASE: DEFAULT_TRANSCRIPTION_BASE,
   TRANSCRIPTION: buildApiUrl(DEFAULT_TRANSCRIPTION_BASE, "/audio/transcriptions"),
-} as const;
-
-export const API_VERSIONS = {
-  ANTHROPIC: "2023-06-01",
-  GEMINI: "v1beta",
 } as const;
 
 // Model Configuration

@@ -1,5 +1,5 @@
 # the name by which the project can be referenced within Serena/when chatting with the LLM.
-project_name: "openwhispr"
+project_name: "EktosWhispr"
 
 # the encoding used by text files in the project
 # For a list of possible encodings, see https://docs.python.org/3.11/library/codecs.html#standard-encodings
@@ -176,3 +176,7 @@ additional_workspace_folders: []
 # Note that when using the JetBrains backend, language servers are not used and this list is correspondingly ignored.
 language_servers:
 - typescript
+- cpp
+- bash
+- python
+- powershell
