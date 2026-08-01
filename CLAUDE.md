@@ -29,6 +29,8 @@
 4. **Docs updated per iteration**: Folder `index.md` files + CLAUDE.md + RECREATION_SPEC.md + spec doc all updated when a spec lands.
 5. **Node 26 pinned** (`.nvmrc`); never regenerate `package-lock.json` with another major.
 6. **Premises are law** (docs/premises.md): privacy (no telemetry, loopback-only listeners), idle ≤300 MB RAM / <2% CPU, raw transcription ≤500 ms, single instance, graceful degradation of optional binaries, migration safety (never lose user data), data-retention (operational data never auto-purges). `pr-reviewer` hard-fails violations.
+7. **Skills process**: Use the superpowers skill (brainstorming → plans → TDD → verification) and ponytail (laziest working solution, stdlib over deps, deletion over addition) for every discovery, planning, and implementation flow.
+8. **Temp files**: Any temporary file needed in the project (e.g. PR bodies, scratch) goes in `{projectdir}\tmp` — never the OS temp dir.
 
 ---
 
