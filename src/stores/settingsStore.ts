@@ -82,7 +82,7 @@ function readNumber(key: string, fallback: number): number {
 }
 
 /** Default sampling parameters for local (llama.cpp) inference. */
-export const LOCAL_PARAM_DEFAULTS = {
+const LOCAL_PARAM_DEFAULTS = {
   temperature: 0,
   topP: 1,
   topK: 0,
@@ -817,11 +817,6 @@ function createStringSetter(key: string) {
     if (isBrowser) localStorage.setItem(key, value);
     useSettingsStore.setState({ [key]: value });
   };
-}
-
-/** Writes a string setting whose key is computed rather than known up front. */
-export function setStringSetting(key: keyof SettingsState, value: string): void {
-  createStringSetter(key)(value);
 }
 
 function createBooleanSetter(key: string) {
@@ -2243,13 +2238,7 @@ export const selectEffectiveCleanupModel = (state: SettingsState) =>
       ? state.localModel
       : state.cleanupModel;
 
-export const selectEffectiveCleanupProvider = (state: SettingsState) => state.cleanupProvider;
-
-export const selectIsCloudChatAgentMode = (_state: SettingsState) => false;
-
 export const selectIsCloudDictationAgentMode = (_state: SettingsState) => false;
-
-export const selectIsCloudNoteFormattingMode = (_state: SettingsState) => false;
 
 export interface ResolvedMeetingTranscription {
   useLocalWhisper: boolean;
@@ -2412,10 +2401,6 @@ export function setResolvedLLMConfig(
     (updates as Record<string, unknown>)[storeKey as string] = value;
   }
   if (Object.keys(updates).length > 0) useSettingsStore.setState(updates);
-}
-
-export function isCloudChatAgentMode() {
-  return selectIsCloudChatAgentMode(useSettingsStore.getState());
 }
 
 // --- Convenience getters for non-React code ---

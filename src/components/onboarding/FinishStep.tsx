@@ -6,7 +6,6 @@ import { SettingsPanel, SettingsPanelRow, SettingsRow } from "../ui/SettingsSect
 
 interface FinishStepProps {
   isCloudUser: boolean;
-  useCases: string[];
   onFinish: (openSettings: boolean) => void;
   isFinishing: boolean;
   autoStartEnabled: boolean;

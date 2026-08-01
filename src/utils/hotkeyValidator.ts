@@ -251,29 +251,6 @@ const LINUX_RESERVED_SHORTCUTS = [
   "Super+PrintScreen",
 ] as const;
 
-const MAC_RECOMMENDED = [
-  "Fn",
-  "Ctrl + Option",
-  "Option + Cmd",
-  "Right Cmd or Right Option",
-  "Modifier + unused key (e.g., Ctrl + Page Up)",
-] as const;
-
-const WINDOWS_RECOMMENDED = [
-  "Ctrl + Win",
-  "Ctrl + Alt",
-  "Ctrl (right) or Alt (right)",
-  "Modifier + rarely used key (e.g., Ctrl + Page Up)",
-] as const;
-
-const LINUX_RECOMMENDED = [
-  "Ctrl + Super",
-  "Ctrl + Shift + Super",
-  "Super + Shift",
-  "Ctrl (right) or Alt (right)",
-  "Modifier + rarely used key (e.g., Ctrl + Page Up or Ctrl + Scroll Lock)",
-] as const;
-
 const MAC_EXAMPLES = [
   "Control+Shift+K",
   "Alt+F7",
@@ -298,13 +275,6 @@ const LINUX_EXAMPLES = [
   "Control+Shift+Space",
   "Shift+F9",
   "Control+Super+M",
-] as const;
-
-export const VALIDATION_RULES = [
-  "Uses three keys or fewer",
-  "Includes at least one modifier or non-alphanumeric key",
-  "Does not mix left and right versions of the same modifier",
-  "Is not reserved by the system",
 ] as const;
 
 function normalizeModifier(part: string, platform: Platform): string | null {
@@ -468,19 +438,6 @@ export function getReservedShortcuts(platform: Platform): readonly string[] {
       return WINDOWS_RESERVED_SHORTCUTS;
     case "linux":
       return LINUX_RESERVED_SHORTCUTS;
-    default:
-      return [];
-  }
-}
-
-export function getRecommendedPatterns(platform: Platform): readonly string[] {
-  switch (platform) {
-    case "darwin":
-      return MAC_RECOMMENDED;
-    case "win32":
-      return WINDOWS_RECOMMENDED;
-    case "linux":
-      return LINUX_RECOMMENDED;
     default:
       return [];
   }

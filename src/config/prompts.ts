@@ -7,11 +7,8 @@ export {
   getDefaultPromptText,
   getDefaultSystemInstructions,
   appendDictionarySuffix,
-  appendScreenContextSuffix,
-  applyPromptPlaceholders,
 } from "./prompts/index";
 export { PROMPT_KINDS, PROMPT_KIND_LIST, type PromptKind } from "./prompts/registry";
-export { detectAgentName } from "./agentDetection";
 
 export function getCleanupSystemPrompt(
   agentName: string | null,
@@ -47,11 +44,6 @@ export function getCleanupUserPrompt(
     screenContextText,
     userTranscription,
   });
-}
-
-export function getWordBoost(customDictionary?: string[]): string[] {
-  if (!customDictionary || customDictionary.length === 0) return [];
-  return customDictionary.filter((w) => w.trim());
 }
 
 const TOOL_INSTRUCTIONS: Record<string, string> = {
