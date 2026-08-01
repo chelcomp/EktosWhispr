@@ -2,6 +2,7 @@ import enPrompts from "./en/prompts.json";
 import ptPrompts from "./pt/prompts.json";
 
 export interface PromptBundle {
+  systemInstructions: string;
   cleanupPrompt: string;
   fullPrompt: string;
   dictionarySuffix: string;

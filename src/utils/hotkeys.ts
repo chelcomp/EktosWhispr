@@ -140,41 +140,6 @@ export function formatHotkeyLabelForPlatform(hotkey: string, platform: Platform)
 }
 
 /**
- * Parses a hotkey string to extract modifiers and the base key.
- *
- * @param hotkey - The hotkey string in Electron accelerator format
- * @returns Object with modifiers array and baseKey
- *
- * @example
- * parseHotkey("CommandOrControl+Shift+K")
- * // { modifiers: ["CommandOrControl", "Shift"], baseKey: "K" }
- */
-export function parseHotkey(hotkey: string): {
-  modifiers: string[];
-  baseKey: string;
-} {
-  if (!hotkey || !hotkey.includes("+")) {
-    return { modifiers: [], baseKey: hotkey || "" };
-  }
-
-  const parts = hotkey.split("+");
-  const baseKey = parts[parts.length - 1];
-  const modifiers = parts.slice(0, -1);
-
-  return { modifiers, baseKey };
-}
-
-/**
- * Checks if a hotkey is a compound hotkey (has modifiers).
- *
- * @param hotkey - The hotkey string
- * @returns True if the hotkey includes modifiers
- */
-export function isCompoundHotkey(hotkey: string): boolean {
-  return hotkey?.includes("+") || false;
-}
-
-/**
  * Gets the default hotkey for the current platform.
  * - macOS: GLOBE key (Fn key on modern Macs)
  * - Windows/Linux: Control+Super (Ctrl+Win / Ctrl+Super)
@@ -182,35 +147,4 @@ export function isCompoundHotkey(hotkey: string): boolean {
 export function getDefaultHotkey(): string {
   const platform = getPlatform();
   return platform === "darwin" ? "GLOBE" : "Control+Super";
-}
-
-/**
- * Validates if a hotkey string is in a valid format.
- * Valid formats include single keys and Electron accelerator strings.
- *
- * @param hotkey - The hotkey string to validate
- * @returns True if the hotkey format is valid
- */
-export function isValidHotkeyFormat(hotkey: string): boolean {
-  if (!hotkey || hotkey.trim() === "") {
-    return false;
-  }
-
-  if (isGlobeLikeHotkey(hotkey) || isMouseButtonHotkey(hotkey)) {
-    return true;
-  }
-
-  // Single character or word keys are valid
-  if (!hotkey.includes("+")) {
-    return true;
-  }
-
-  // Compound hotkey: must have at least one modifier and one base key
-  const parts = hotkey.split("+");
-  if (parts.length < 2) {
-    return false;
-  }
-
-  // Check that all parts are non-empty
-  return parts.every((part) => part.trim().length > 0);
 }

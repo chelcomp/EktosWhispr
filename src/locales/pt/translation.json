@@ -1027,7 +1027,13 @@
       "placeholderLanguages": "A instrução de idioma para o idioma de transcrição selecionado. Vazio quando nenhuma instrução de idioma se aplica.",
       "placeholderUserDictionary": "As palavras do seu Dicionário Personalizado. Vazio quando o dicionário está vazio.",
       "placeholderScreenOcr": "Texto extraído por OCR da sua janela ativa no momento do ditado. Vazio quando nenhum contexto de tela foi capturado.",
-      "placeholdersOmitNote": "Omitir um marcador significa que o conteúdo dele não aparecerá em nenhum lugar do prompt — não há adição automática no final."
+      "placeholderUserTranscription": "A transcrição bruta do usuário que será limpa. Este é o texto falado a processar.",
+      "placeholdersOmitNote": "Omitir um marcador significa que o conteúdo dele não aparecerá em nenhum lugar do prompt — não há adição automática no final.",
+      "systemPromptLabel": "Prompt do Sistema",
+      "systemPromptPlaceholder": "Digite as instruções do sistema (regras, diretrizes, comportamento)...",
+      "userPromptLabel": "Modelo de Prompt do Usuário",
+      "userPromptPlaceholder": "Digite o modelo de prompt do usuário (deve incluir {{user-transcription}})...",
+      "userPromptNote": "O marcador {{user-transcription}} será substituído pelo texto ditado real em tempo de execução."
     },
     "tabs": {
       "customize": "Personalizar",

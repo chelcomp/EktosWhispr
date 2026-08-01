@@ -28,7 +28,11 @@ import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
 import { useSystemAudioPermission } from "../hooks/useSystemAudioPermission";
 import { useSettings } from "../hooks/useSettings";
-import { useSettingsStore, selectResolvedLLMConfig, setResolvedLLMConfig } from "../stores/settingsStore";
+import {
+  useSettingsStore,
+  selectResolvedLLMConfig,
+  setResolvedLLMConfig,
+} from "../stores/settingsStore";
 import LanguageSelector from "./ui/LanguageSelector";
 import InferenceConfigEditor from "./settings/InferenceConfigEditor";
 import LocalModelSection from "./settings/LocalModelSection";
@@ -51,7 +55,6 @@ import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import { ACCESSIBILITY_SKIPPED_KEY, areRequiredPermissionsMet } from "../utils/permissions";
 import FinishStep from "./onboarding/FinishStep";
 import { USE_CASE_IDS } from "./onboarding/useCases";
-
 
 // Highest possible step index across flow variants (skip-auth with meeting step).
 const MAX_STEP_INDEX = 7;
@@ -393,8 +396,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
 
     const currentStepId = steps[currentStep]?.id;
-    const isPermissionsGate =
-      currentStepId === "permissions";
+    const isPermissionsGate = currentStepId === "permissions";
     if (
       getPlatform() === "darwin" &&
       isPermissionsGate &&
@@ -551,7 +553,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               variant="onboarding"
               mode="local"
             />
-
           </div>
         );
 
@@ -622,7 +623,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return (
           <FinishStep
             isCloudUser={false}
-            useCases={onboardingUseCases}
             onFinish={(openSettings) => void finishOnboarding(openSettings)}
             isFinishing={isFinishing}
             autoStartEnabled={autoStartEnabled}
@@ -902,9 +902,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <div className="flex-1 px-6 md:px-12 overflow-y-auto py-6">
         <div className="w-full max-w-3xl mx-auto">
           <Card className="bg-card border border-border/50 dark:border-white/5 shadow-lg rounded-xl overflow-hidden">
-            <CardContent className="p-6 md:p-8">
-              {renderStep()}
-            </CardContent>
+            <CardContent className="p-6 md:p-8">{renderStep()}</CardContent>
           </Card>
         </div>
       </div>

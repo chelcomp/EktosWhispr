@@ -1,34 +1,49 @@
-import { resolvePrompt } from "./prompts/index";
+import { resolvePrompt, resolveSystemPrompt, resolveUserPrompt } from "./prompts/index";
 
 export {
   resolvePrompt,
+  resolveSystemPrompt,
+  resolveUserPrompt,
   getDefaultPromptText,
+  getDefaultSystemInstructions,
   appendDictionarySuffix,
-  appendScreenContextSuffix,
-  applyPromptPlaceholders,
 } from "./prompts/index";
 export { PROMPT_KINDS, PROMPT_KIND_LIST, type PromptKind } from "./prompts/registry";
-export { detectAgentName } from "./agentDetection";
 
 export function getCleanupSystemPrompt(
   agentName: string | null,
   customDictionary?: string[],
   language?: string,
   uiLanguage?: string,
-  screenContextText?: string | null
+  screenContextText?: string | null,
+  userTranscription?: string
 ): string {
-  return resolvePrompt("cleanup", {
+  return resolveSystemPrompt("cleanup", {
     agentName,
     language,
     customDictionary,
     uiLanguage,
     screenContextText,
+    userTranscription,
   });
 }
 
-export function getWordBoost(customDictionary?: string[]): string[] {
-  if (!customDictionary || customDictionary.length === 0) return [];
-  return customDictionary.filter((w) => w.trim());
+export function getCleanupUserPrompt(
+  agentName: string | null,
+  customDictionary?: string[],
+  language?: string,
+  uiLanguage?: string,
+  screenContextText?: string | null,
+  userTranscription?: string
+): string {
+  return resolveUserPrompt("cleanup", {
+    agentName,
+    language,
+    customDictionary,
+    uiLanguage,
+    screenContextText,
+    userTranscription,
+  });
 }
 
 const TOOL_INSTRUCTIONS: Record<string, string> = {

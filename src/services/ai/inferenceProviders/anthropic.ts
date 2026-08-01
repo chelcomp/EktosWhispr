@@ -11,8 +11,10 @@ export const anthropicProvider: InferenceProvider = {
     logger.logReasoning("ANTHROPIC_START", { model, agentName, environment: "browser" });
     const startTime = Date.now();
 
-    const systemPrompt = config.systemPrompt || ctx.getSystemPrompt(agentName);
-    const userContent = text;
+    const systemPrompt = config.systemPrompt || ctx.getSystemPrompt(agentName, config.screenContextText);
+    const userContent = config.systemPrompt
+      ? text
+      : ctx.getUserPrompt(agentName, config.screenContextText, text);
 
     logger.logReasoning("ANTHROPIC_REQUEST", {
       model,

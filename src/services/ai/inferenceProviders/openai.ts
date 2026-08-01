@@ -141,10 +141,13 @@ export const openaiProvider: InferenceProvider = {
       keyLength: apiKey?.length || 0,
     });
 
-    const systemPrompt = config.systemPrompt || ctx.getSystemPrompt(agentName);
+    const systemPrompt = config.systemPrompt || ctx.getSystemPrompt(agentName, config.screenContextText);
+    const userContent = config.systemPrompt
+      ? text
+      : ctx.getUserPrompt(agentName, config.screenContextText, text);
     const messages = [
       { role: "system", content: systemPrompt },
-      { role: "user", content: text },
+      { role: "user", content: userContent },
     ];
 
     const openAiBase = isOpenRouter

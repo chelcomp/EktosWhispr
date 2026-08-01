@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { Cpu, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../../stores/settingsStore";
@@ -93,29 +93,21 @@ export default function LocalModelSection() {
     }));
   }, []);
 
-  const [downloadedModels, setDownloadedModels] = useState<Set<string>>(new Set());
-
   const loadDownloadedModels = useCallback(async () => {
     try {
       const result = await window.electronAPI?.modelGetAll?.();
       if (result && Array.isArray(result)) {
-        const downloaded = new Set(
+        return new Set(
           result
             .filter((m: { isDownloaded?: boolean }) => m.isDownloaded)
             .map((m: { id: string }) => m.id)
         );
-        setDownloadedModels(downloaded);
-        return downloaded;
       }
     } catch (error) {
       logger.error("Failed to load downloaded models", { error }, "models");
     }
     return new Set<string>();
   }, []);
-
-  useEffect(() => {
-    loadDownloadedModels();
-  }, [loadDownloadedModels]);
 
   const handleProviderChange = (providerId: string) => {
     setLocalProvider(providerId);
@@ -126,7 +118,8 @@ export default function LocalModelSection() {
     if (!localModel) return null;
     for (const provider of localProviders) {
       const model = provider.models.find((m) => m.id === localModel);
-      if (model) return { providerName: provider.name, modelName: model.name, modelSize: model.size };
+      if (model)
+        return { providerName: provider.name, modelName: model.name, modelSize: model.size };
     }
     return null;
   }, [localModel, localProviders]);
@@ -138,8 +131,12 @@ export default function LocalModelSection() {
         {activeModelInfo ? (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-sm">
             <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.7)] animate-[pulse-glow_2s_ease-in-out_infinite] shrink-0" />
-            <span className="text-green-600 dark:text-green-400 font-medium">{activeModelInfo.modelName}</span>
-            <span className="text-muted-foreground/60 text-xs">{activeModelInfo.providerName} · {activeModelInfo.modelSize}</span>
+            <span className="text-green-600 dark:text-green-400 font-medium">
+              {activeModelInfo.modelName}
+            </span>
+            <span className="text-muted-foreground/60 text-xs">
+              {activeModelInfo.providerName} · {activeModelInfo.modelSize}
+            </span>
           </div>
         ) : (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/40 border border-border/30 text-sm">

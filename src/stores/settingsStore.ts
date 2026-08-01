@@ -82,12 +82,12 @@ function readNumber(key: string, fallback: number): number {
 }
 
 /** Default sampling parameters for local (llama.cpp) inference. */
-export const LOCAL_PARAM_DEFAULTS = {
-  temperature: 0.3,
-  topP: 0.9,
-  topK: 40,
+const LOCAL_PARAM_DEFAULTS = {
+  temperature: 0,
+  topP: 1,
+  topK: 0,
   minP: 0.05,
-  repeatPenalty: 1.1,
+  repeatPenalty: 1.15,
   maxTokens: 4096,
 } as const;
 
@@ -608,7 +608,9 @@ export interface SettingsState
   resetLocalGenerationParams: () => void;
 
   customPrompts: Record<PromptKind, string>;
+  customSystemInstructions: Record<PromptKind, string>;
   setCustomPrompt: (kind: PromptKind, value: string) => void;
+  setCustomSystemInstructions: (kind: PromptKind, value: string) => void;
 
   setDictationAgentMode: (mode: InferenceMode) => void;
   setDictationAgentProvider: (value: string) => void;
@@ -815,11 +817,6 @@ function createStringSetter(key: string) {
     if (isBrowser) localStorage.setItem(key, value);
     useSettingsStore.setState({ [key]: value });
   };
-}
-
-/** Writes a string setting whose key is computed rather than known up front. */
-export function setStringSetting(key: keyof SettingsState, value: string): void {
-  createStringSetter(key)(value);
 }
 
 function createBooleanSetter(key: string) {
@@ -1429,10 +1426,20 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     (acc, kind) => ({ ...acc, [kind]: readString(`customPrompt.${kind}`, "") }),
     {} as Record<PromptKind, string>
   ),
+  customSystemInstructions: PROMPT_KIND_LIST.reduce(
+    (acc, kind) => ({ ...acc, [kind]: readString(`customSystemInstructions.${kind}`, "") }),
+    {} as Record<PromptKind, string>
+  ),
   setCustomPrompt: (kind, value) => {
     if (isBrowser) localStorage.setItem(`customPrompt.${kind}`, value);
     useSettingsStore.setState((s) => ({
       customPrompts: { ...s.customPrompts, [kind]: value },
+    }));
+  },
+  setCustomSystemInstructions: (kind: PromptKind, value: string) => {
+    if (isBrowser) localStorage.setItem(`customSystemInstructions.${kind}`, value);
+    useSettingsStore.setState((s) => ({
+      customSystemInstructions: { ...s.customSystemInstructions, [kind]: value },
     }));
   },
 
@@ -2231,13 +2238,7 @@ export const selectEffectiveCleanupModel = (state: SettingsState) =>
       ? state.localModel
       : state.cleanupModel;
 
-export const selectEffectiveCleanupProvider = (state: SettingsState) => state.cleanupProvider;
-
-export const selectIsCloudChatAgentMode = (_state: SettingsState) => false;
-
 export const selectIsCloudDictationAgentMode = (_state: SettingsState) => false;
-
-export const selectIsCloudNoteFormattingMode = (_state: SettingsState) => false;
 
 export interface ResolvedMeetingTranscription {
   useLocalWhisper: boolean;
@@ -2400,10 +2401,6 @@ export function setResolvedLLMConfig(
     (updates as Record<string, unknown>)[storeKey as string] = value;
   }
   if (Object.keys(updates).length > 0) useSettingsStore.setState(updates);
-}
-
-export function isCloudChatAgentMode() {
-  return selectIsCloudChatAgentMode(useSettingsStore.getState());
 }
 
 // --- Convenience getters for non-React code ---
@@ -2911,6 +2908,15 @@ export async function initializeSettings(): Promise<void> {
       if (!PROMPT_KIND_LIST.includes(kind)) return;
       useSettingsStore.setState((s) => ({
         customPrompts: { ...s.customPrompts, [kind]: newValue },
+      }));
+      return;
+    }
+
+    if (key.startsWith("customSystemInstructions.")) {
+      const kind = key.slice("customSystemInstructions.".length) as PromptKind;
+      if (!PROMPT_KIND_LIST.includes(kind)) return;
+      useSettingsStore.setState((s) => ({
+        customSystemInstructions: { ...s.customSystemInstructions, [kind]: newValue },
       }));
       return;
     }

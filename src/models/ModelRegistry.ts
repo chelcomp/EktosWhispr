@@ -71,7 +71,7 @@ export interface TranscriptionProviderData {
   batchModel?: string;
 }
 
-export interface WhisperModelInfo {
+interface WhisperModelInfo {
   name: string;
   description: string;
   descriptionKey?: string;
@@ -88,9 +88,9 @@ export interface WhisperModelConfig {
   fileName: string;
 }
 
-export type WhisperModelsMap = Record<string, WhisperModelInfo>;
+type WhisperModelsMap = Record<string, WhisperModelInfo>;
 
-export interface ParakeetModelInfo {
+interface ParakeetModelInfo {
   name: string;
   description: string;
   descriptionKey?: string;
@@ -104,7 +104,7 @@ export interface ParakeetModelInfo {
   runtime?: "offline" | "online";
 }
 
-export type ParakeetModelsMap = Record<string, ParakeetModelInfo>;
+type ParakeetModelsMap = Record<string, ParakeetModelInfo>;
 
 interface ModelRegistryData {
   parakeetModels: ParakeetModelsMap;
@@ -270,10 +270,6 @@ function buildReasoningProviders(): ReasoningProviders {
 
 export const REASONING_PROVIDERS = buildReasoningProviders();
 
-
-
-
-
 export interface ReasoningModelWithProvider extends ReasoningModel {
   provider: string;
   fullLabel: string;
@@ -287,11 +283,6 @@ export function getAllReasoningModels(): ReasoningModelWithProvider[] {
       fullLabel: `${provider.name} ${model.label}`,
     }))
   );
-}
-
-export function getReasoningModelLabel(modelId: string): string {
-  const model = getAllReasoningModels().find((m) => m.value === modelId);
-  return model?.fullLabel || modelId;
 }
 
 const NON_REGISTRY_PROVIDER_NAMES: Record<string, string> = {
@@ -377,19 +368,6 @@ export function getBatchTranscriptionModel(providerId: string): string | undefin
   return getTranscriptionProvider(providerId)?.batchModel;
 }
 
-export function getDefaultTranscriptionModel(providerId: string): string {
-  const models = getTranscriptionModels(providerId);
-  return models[0]?.id || "gpt-4o-mini-transcribe";
-}
-
-export function getWhisperModels(): WhisperModelsMap {
-  return modelData.whisperModels;
-}
-
-export function getWhisperModelInfo(modelId: string): WhisperModelInfo | undefined {
-  return modelData.whisperModels[modelId];
-}
-
 export const WHISPER_MODEL_INFO = modelData.whisperModels;
 
 export function getCloudModel(modelId: string): CloudModelDefinition | undefined {
@@ -449,14 +427,6 @@ export function getOpenAiApiConfig(modelId: string, provider?: string): OpenAiAp
   return { tokenParam: "max_completion_tokens", supportsTemperature: false };
 }
 
-export function getParakeetModels(): ParakeetModelsMap {
-  return modelData.parakeetModels;
-}
-
-export function getParakeetModelInfo(modelId: string): ParakeetModelInfo | undefined {
-  return modelData.parakeetModels[modelId];
-}
-
 export const PARAKEET_MODEL_INFO = modelData.parakeetModels;
 
 export function getWhisperModelConfig(modelId: string): WhisperModelConfig | null {
@@ -467,8 +437,4 @@ export function getWhisperModelConfig(modelId: string): WhisperModelConfig | nul
     size: modelInfo.sizeMb * 1_000_000,
     fileName: modelInfo.fileName,
   };
-}
-
-export function getValidWhisperModelNames(): string[] {
-  return Object.keys(modelData.whisperModels);
 }

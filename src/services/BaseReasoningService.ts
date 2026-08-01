@@ -1,4 +1,4 @@
-import { getCleanupSystemPrompt } from "../config/prompts";
+import { getCleanupSystemPrompt, getCleanupUserPrompt } from "../config/prompts";
 import { getSettings } from "../stores/settingsStore";
 import { getDictionaryHintWords } from "../utils/snippets";
 
@@ -48,6 +48,21 @@ export abstract class BaseReasoningService {
       this.getPreferredLanguage(),
       this.getUiLanguage(),
       screenContextText
+    );
+  }
+
+  protected getUserPrompt(
+    agentName: string | null,
+    screenContextText?: string | null,
+    userTranscription?: string
+  ): string {
+    return getCleanupUserPrompt(
+      agentName,
+      this.getCustomDictionary(),
+      this.getPreferredLanguage(),
+      this.getUiLanguage(),
+      screenContextText,
+      userTranscription
     );
   }
 

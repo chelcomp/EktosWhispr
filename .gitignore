@@ -293,10 +293,17 @@ $RECYCLE.BIN/
 .qoder/
 .qwen/
 .roo/
+.serena/
 .trae/
 .windsurf/
 .zencoder/
 skills/
+
+# Git worktrees
+.wt/
+
+# Memory heap snapshots
+*.heapsnapshot
 
 # OS generated files
 .DS_Store

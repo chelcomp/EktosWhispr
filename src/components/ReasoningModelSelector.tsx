@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type {
-  InferenceMode,
-} from "../types/electron";
+import type { InferenceMode } from "../types/electron";
 import { Cloud, Lock } from "lucide-react";
 import { GpuModeSelector } from "./ui/GpuModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
@@ -31,14 +29,7 @@ type CloudModelOption = {
 const OPENROUTER_TAB = "openrouter";
 const OPENROUTER_KEYS_URL = "https://openrouter.ai/keys";
 
-const CLOUD_PROVIDER_IDS = [
-  "openai",
-  "anthropic",
-  "gemini",
-  "groq",
-  OPENROUTER_TAB,
-  "custom",
-];
+const CLOUD_PROVIDER_IDS = ["openai", "anthropic", "gemini", "groq", OPENROUTER_TAB, "custom"];
 
 interface ReasoningModelSelectorProps {
   reasoningModel: string;
@@ -52,7 +43,6 @@ interface ReasoningModelSelectorProps {
   setReasoningMode?: (mode: InferenceMode) => void;
   mode?: "cloud" | "local";
 }
-
 
 export default function ReasoningModelSelector({
   reasoningModel,
@@ -154,29 +144,21 @@ export default function ReasoningModelSelector({
     }
   }, [localProviders, localReasoningProvider]);
 
-  const [downloadedModels, setDownloadedModels] = useState<Set<string>>(new Set());
-
   const loadDownloadedModels = useCallback(async () => {
     try {
       const result = await window.electronAPI?.modelGetAll?.();
       if (result && Array.isArray(result)) {
-        const downloaded = new Set(
+        return new Set(
           result
             .filter((m: { isDownloaded?: boolean }) => m.isDownloaded)
             .map((m: { id: string }) => m.id)
         );
-        setDownloadedModels(downloaded);
-        return downloaded;
       }
     } catch (error) {
       logger.error("Failed to load downloaded models", { error }, "models");
     }
     return new Set<string>();
   }, []);
-
-  useEffect(() => {
-    loadDownloadedModels();
-  }, [loadDownloadedModels]);
 
   const selectDefaultModelForProvider = (provider: string) => {
     // Custom/OpenRouter fetch their model list dynamically — clear instead of
