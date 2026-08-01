@@ -29,7 +29,7 @@
 4. **Docs updated per iteration**: Folder `index.md` files + CLAUDE.md + RECREATION_SPEC.md + spec doc all updated when a spec lands.
 5. **Node 26 pinned** (`.nvmrc`); never regenerate `package-lock.json` with another major.
 6. **Premises are law** (docs/premises.md): privacy (no telemetry, loopback-only listeners), idle ≤300 MB RAM / <2% CPU, raw transcription ≤500 ms, single instance, graceful degradation of optional binaries, migration safety (never lose user data), data-retention (operational data never auto-purges). `pr-reviewer` hard-fails violations.
-7. **Skills process**: Use the superpowers skill (brainstorming → plans → TDD → verification) and ponytail (laziest working solution, stdlib over deps, deletion over addition) for every discovery, planning, and implementation flow.
+7. **Skills process**: Use the superpowers skill (brainstorming → plans → TDD → verification) and **ponytail in ULTRA mode — always** (laziest working solution, stdlib over deps, deletion over addition, YAGNI) for every discovery, planning, review, and implementation flow. Ponytail is permanently active at ULTRA; never drift to default/normal mode.
 8. **Temp files**: Any temporary file needed in the project (e.g. PR bodies, scratch) goes in `{projectdir}\tmp` — never the OS temp dir.
 9. **NO FAILING TESTS, EVER**: The test suite (`npm test`) must always be fully green. If any test fails — whether caused by the current change or pre-existing — fix it immediately. Do NOT commit, push, create a PR, or report a task as done while any test fails. Enter a fix loop until the entire suite passes, then re-run all quality gates.
 
@@ -39,7 +39,7 @@
 
 > YAGNI + one-liners: the laziest solution that actually works. When a review is requested, run this checklist every time.
 
-1. Review with **ponytail max/ultra** (hunt over-engineering, YAGNI, simpler stdlib/native alternatives; shortest working diff wins).
+1. Review with **ponytail ULTRA** (hunt over-engineering, YAGNI, simpler stdlib/native alternatives; shortest working diff wins).
 2. **Run the tests** (`npm test`).
 3. **Build the app** (`npm run build:renderer` + `npm run typecheck` + `npm run lint` + `npm run format:check`).
 4. **Compare against plan and spec requirements** (`docs/specs/<slug>.md` + `docs/RECREATION_SPEC.md`) — mark each item done/pending.
