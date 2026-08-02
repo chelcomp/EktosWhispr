@@ -23,7 +23,6 @@ class DatabaseManager {
       const dbPath = path.join(app.getPath("userData"), dbFileName);
 
       this.db = new Database(dbPath);
-      this.db.pragma("journal_mode = WAL");
 
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS transcriptions (
@@ -548,6 +547,18 @@ class DatabaseManager {
       } catch (err) {
         if (!err.message.includes("duplicate column")) throw err;
       }
+      // original_phrase / corrected_phrase: sentence-level context for each
+      // learned correction. Local-only like learned_from, never synced to cloud.
+      try {
+        this.db.exec("ALTER TABLE custom_dictionary ADD COLUMN original_phrase TEXT");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
+      try {
+        this.db.exec("ALTER TABLE custom_dictionary ADD COLUMN corrected_phrase TEXT");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
 
       // Backfill client IDs for existing rows
       const syncTables = [
@@ -862,7 +873,7 @@ class DatabaseManager {
       }
       return this.db
         .prepare(
-          "SELECT word, source, learned_from FROM custom_dictionary WHERE deleted_at IS NULL ORDER BY id ASC"
+          "SELECT word, source, learned_from, original_phrase, corrected_phrase FROM custom_dictionary WHERE deleted_at IS NULL ORDER BY id ASC"
         )
         .all();
     } catch (error) {
@@ -878,10 +889,17 @@ class DatabaseManager {
   // Diff-based update so unchanged rows keep their source/created_at/cloud_id.
   // `sourceForNewWords` tags additions ('manual' for user-typed, 'learned' for auto-learn).
   // `learnedFromByLowerWord` (optional) is a Map<lowercased 'to' word, original 'from' word>
-  // consulted only when inserting a brand-new 'learned' row this call, so newly-learned
-  // corrections carry provenance for the anti-oscillation guard. Existing/updated rows and
-  // manual/bulk-restore paths that don't supply it leave learned_from untouched/NULL.
-  setDictionary(words, sourceForNewWords = "manual", learnedFromByLowerWord = null) {
+  // and `phrasesByLowerWord` (optional) is a Map<lowercased 'to' word, {original_phrase,
+  // corrected_phrase}>. For a brand-new 'learned' row both are stored on insert. When
+  // sourceForNewWords === 'learned' and an existing row is a genuine RE-CAPTURE this
+  // call (its lowercased word is a key in `learnedFromByLowerWord` — every auto-learn
+  // survivor carries one), the row is upgraded: source flips to 'learned' and
+  // learned_from/phrases are refreshed (new values win; absent values keep the row's
+  // existing provenance). Existing rows merely INCLUDED in the pushed list are left
+  // untouched (plain casing update) — a manual word must not become 'learned' just
+  // because it co-occurs in an auto-learn save. Routine 'manual' pushes never touch
+  // provenance. Phrases are local-only, never synced to cloud (like learned_from).
+  setDictionary(words, sourceForNewWords = "manual", learnedFromByLowerWord = null, phrasesByLowerWord = null) {
     try {
       if (!this.db) {
         throw new Error("Database not initialized");
@@ -900,7 +918,9 @@ class DatabaseManager {
       const incomingLower = new Set(incomingByLower.keys());
 
       const existingRows = this.db
-        .prepare("SELECT id, word, source, deleted_at FROM custom_dictionary")
+        .prepare(
+          "SELECT id, word, source, deleted_at, learned_from, original_phrase, corrected_phrase FROM custom_dictionary"
+        )
         .all();
       const existingByLower = new Map(existingRows.map((r) => [r.word.toLowerCase(), r]));
 
@@ -913,10 +933,21 @@ class DatabaseManager {
       const restore = this.db.prepare(
         "UPDATE custom_dictionary SET deleted_at = NULL, source = CASE WHEN source = 'learned' AND ? = 'manual' THEN 'manual' ELSE source END, word = ?, updated_at = datetime('now'), sync_status = 'pending' WHERE id = ?"
       );
-      // Once a human explicitly re-types/re-saves a previously auto-learned word, its
-      // auto-learn provenance is no longer meaningful — clear it alongside the promotion.
-      const promoteSource = this.db.prepare(
-        "UPDATE custom_dictionary SET word = ?, source = 'manual', learned_from = NULL, updated_at = datetime('now'), sync_status = 'pending' WHERE id = ? AND source = 'learned'"
+      // NOTE: there is intentionally NO "promote learned -> manual" rewrite
+      // here. The renderer re-pushes the full flat dictionary list on routine
+      // syncs (startup hydration, agent-name sync, settings push), and the
+      // flat list carries no provenance — a blanket promotion on every manual
+      // push would wipe learned_from + phrase context from all learned rows on
+      // the first routine sync. Learned rows therefore keep their provenance
+      // until explicitly deleted; rows a human adds from scratch are inserted
+      // as 'manual' from the start.
+      // Auto-learn RE-CAPTURE of an existing word: upgrade the row's provenance
+      // instead of leaving it as a bare word edit. This is what restores phrase
+      // context when a previously-manual row (e.g. one whose learned provenance
+      // was destroyed before the startup-clobber fix) is corrected again. Gated
+      // on learnedFromByLowerWord.has(word) — see setDictionary's doc comment.
+      const upgradeLearned = this.db.prepare(
+        "UPDATE custom_dictionary SET source = 'learned', learned_from = ?, original_phrase = ?, corrected_phrase = ?, word = ?, updated_at = datetime('now'), sync_status = 'pending' WHERE id = ?"
       );
       // Updates word casing on an active row (guarded on word != ? so an
       // unchanged row stays untouched and keeps its sync_status).
@@ -926,7 +957,7 @@ class DatabaseManager {
       // INSERT OR IGNORE in case a legacy case-variant row collides on the
       // case-sensitive UNIQUE(word) that existingByLower didn't catch.
       const insert = this.db.prepare(
-        "INSERT OR IGNORE INTO custom_dictionary (word, source, client_dict_id, sync_status, updated_at, learned_from) VALUES (?, ?, ?, 'pending', datetime('now'), ?)"
+        "INSERT OR IGNORE INTO custom_dictionary (word, source, client_dict_id, sync_status, updated_at, learned_from, original_phrase, corrected_phrase) VALUES (?, ?, ?, 'pending', datetime('now'), ?, ?, ?)"
       );
 
       this.db.transaction(() => {
@@ -943,8 +974,23 @@ class DatabaseManager {
           if (existing) {
             if (existing.deleted_at) {
               restore.run(sourceForNewWords, word, existing.id);
-            } else if (sourceForNewWords === "manual" && existing.source === "learned") {
-              promoteSource.run(word, existing.id);
+            } else if (sourceForNewWords === "learned") {
+              const lower = word.toLowerCase();
+              if (learnedFromByLowerWord && learnedFromByLowerWord.has(lower)) {
+                const learnedFrom = learnedFromByLowerWord.get(lower) || existing.learned_from || null;
+                const phrases = phrasesByLowerWord ? phrasesByLowerWord.get(lower) : null;
+                upgradeLearned.run(
+                  learnedFrom,
+                  phrases ? phrases.original_phrase : (existing.original_phrase ?? null),
+                  phrases ? phrases.corrected_phrase : (existing.corrected_phrase ?? null),
+                  word,
+                  existing.id
+                );
+              } else {
+                // In the pushed list but not re-captured this call: plain casing
+                // update, provenance untouched.
+                updateWord.run(word, existing.id, word);
+              }
             } else {
               updateWord.run(word, existing.id, word);
             }
@@ -954,7 +1000,18 @@ class DatabaseManager {
             sourceForNewWords === "learned" && learnedFromByLowerWord
               ? learnedFromByLowerWord.get(word.toLowerCase()) || null
               : null;
-          insert.run(word, sourceForNewWords, randomUUID(), learnedFrom);
+          const phrases =
+            sourceForNewWords === "learned" && phrasesByLowerWord
+              ? phrasesByLowerWord.get(word.toLowerCase()) || null
+              : null;
+          insert.run(
+            word,
+            sourceForNewWords,
+            randomUUID(),
+            learnedFrom,
+            phrases ? phrases.original_phrase : null,
+            phrases ? phrases.corrected_phrase : null
+          );
         }
       })();
 

@@ -2,6 +2,41 @@ const { extractCorrections } = require("../utils/correctionLearner");
 const debugLogger = require("./debugLogger");
 
 /**
+ * Extract the sentence containing `word` from `text`.
+ * Sentences are delimited by `.`, `!`, or `?`.
+ * Returns the trimmed sentence including the trailing punctuation,
+ * or the full `text` if no sentence boundary is found.
+ */
+function extractSentence(text, word) {
+  const lowerWord = word.toLowerCase();
+  const lowerText = text.toLowerCase();
+
+  // Find the word in the text (case-insensitive)
+  const wordIdx = lowerText.indexOf(lowerWord);
+  if (wordIdx === -1) return null;
+
+  // Find the start of the sentence: look backward for `.`, `!`, `?`, or start of text
+  let sentenceStart = 0;
+  for (let i = wordIdx - 1; i >= 0; i--) {
+    if (text[i] === "." || text[i] === "!" || text[i] === "?") {
+      sentenceStart = i + 1;
+      break;
+    }
+  }
+
+  // Find the end of the sentence: look forward for `.`, `!`, `?`, or end of text
+  let sentenceEnd = text.length;
+  for (let i = wordIdx; i < text.length; i++) {
+    if (text[i] === "." || text[i] === "!" || text[i] === "?") {
+      sentenceEnd = i + 1;
+      break;
+    }
+  }
+
+  return text.slice(sentenceStart, sentenceEnd).trim();
+}
+
+/**
  * Core logic behind the text-monitor "auto-learn" pipeline: given the
  * originally-pasted text and the field's value after the user finished
  * editing it (already debounced by the caller — see ipcHandlers.js's
@@ -57,6 +92,7 @@ function processAutoLearnCorrections({ originalText, newFieldValue, databaseMana
   const survivors = [];
   const skippedOscillations = [];
   const provenance = new Map();
+  const phrasesByLowerWord = new Map();
 
   for (const { from, to } of pairs) {
     const reverseKey = `${from.toLowerCase()}::${to.toLowerCase()}`;
@@ -67,6 +103,13 @@ function processAutoLearnCorrections({ originalText, newFieldValue, databaseMana
     }
     survivors.push(to);
     provenance.set(to.toLowerCase(), from);
+
+    // Extract sentence-level phrases for display context.
+    const originalPhrase = extractSentence(originalText, from);
+    const correctedPhrase = extractSentence(newFieldValue, to);
+    if (originalPhrase && correctedPhrase && originalPhrase !== from && correctedPhrase !== to) {
+      phrasesByLowerWord.set(to.toLowerCase(), { original_phrase: originalPhrase, corrected_phrase: correctedPhrase });
+    }
   }
 
   if (survivors.length === 0) {
@@ -74,7 +117,7 @@ function processAutoLearnCorrections({ originalText, newFieldValue, databaseMana
   }
 
   const updatedDict = [...currentDict, ...survivors];
-  const saveResult = databaseManager.setDictionary(updatedDict, "learned", provenance);
+  const saveResult = databaseManager.setDictionary(updatedDict, "learned", provenance, phrasesByLowerWord);
 
   if (saveResult?.success === false) {
     return { learned: [], skippedOscillations, error: saveResult.error };
