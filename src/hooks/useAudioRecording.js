@@ -16,6 +16,7 @@ export const useAudioRecording = (toast, options = {}) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [partialTranscript, setPartialTranscript] = useState("");
+  const [micError, setMicError] = useState(null);
   const audioManagerRef = useRef(null);
   const startLockRef = useRef(false);
   const stopLockRef = useRef(false);
@@ -30,6 +31,7 @@ export const useAudioRecording = (toast, options = {}) => {
     if (startLockRef.current) return false;
     startLockRef.current = true;
     try {
+      setMicError(null);
       if (!audioManagerRef.current) return false;
 
       const currentState = audioManagerRef.current.getState();
@@ -166,6 +168,7 @@ export const useAudioRecording = (toast, options = {}) => {
         }
       },
       onError: (error) => {
+        setMicError(error);
         if (error?.title !== "Paste Error") {
           window.electronAPI?.hideDictationPreview?.();
           // Paste errors happen after recording already stopped (mic already
@@ -431,6 +434,8 @@ export const useAudioRecording = (toast, options = {}) => {
     isStreaming,
     transcript,
     partialTranscript,
+    micError,
+    clearMicError: () => setMicError(null),
     startRecording: performStartRecording,
     stopRecording: performStopRecording,
     cancelRecording,

@@ -11,6 +11,8 @@ import { useAudioRecording } from "./hooks/useAudioRecording";
 import { useSettingsStore, selectResolvedLLMConfig } from "./stores/settingsStore";
 import { playTransformStartCue, playTransformDoneCue } from "./utils/dictationCues";
 import VersionBadge from "./components/VersionBadge";
+import DictationBar from "./components/DictationBar";
+import { deriveBarView } from "./utils/dictationBar";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -104,6 +106,7 @@ export default function App() {
   // Floating icon auto-hide setting (read from store, synced via IPC)
   const floatingIconAutoHide = useSettingsStore((s) => s.floatingIconAutoHide);
   const panelStartPosition = useSettingsStore((s) => s.panelStartPosition);
+  const dictationBarPosition = useSettingsStore((s) => s.dictationBarPosition);
   const prevAutoHideRef = useRef(floatingIconAutoHide);
 
   const setWindowInteractivity = React.useCallback((shouldCapture) => {
@@ -183,31 +186,25 @@ export default function App() {
     }
   }, [isCommandMenuOpen, isHovered, toastCount, setWindowInteractivity]);
 
-  useEffect(() => {
-    const resizeWindow = () => {
-      if (isCommandMenuOpen && toastCount > 0) {
-        window.electronAPI?.resizeMainWindow?.("EXPANDED");
-      } else if (isCommandMenuOpen) {
-        window.electronAPI?.resizeMainWindow?.("WITH_MENU");
-      } else if (toastCount > 0) {
-        window.electronAPI?.resizeMainWindow?.("WITH_TOAST");
-      } else {
-        window.electronAPI?.resizeMainWindow?.("BASE");
-      }
-    };
-    resizeWindow();
-  }, [isCommandMenuOpen, toastCount]);
-
   const handleDictationToggle = React.useCallback(() => {
     setIsCommandMenuOpen(false);
     setWindowInteractivity(false);
   }, [setWindowInteractivity]);
 
-  const { isRecording, isProcessing, toggleListening, cancelRecording, cancelProcessing } =
-    useAudioRecording(toast, {
-      onToggle: handleDictationToggle,
-      dismissToast: dismiss,
-    });
+  const {
+    isRecording,
+    isProcessing,
+    transcript,
+    partialTranscript,
+    micError,
+    clearMicError,
+    toggleListening,
+    cancelRecording,
+    cancelProcessing,
+  } = useAudioRecording(toast, {
+    onToggle: handleDictationToggle,
+    dismissToast: dismiss,
+  });
 
   // Sync auto-hide from main process — setState directly to avoid IPC echo
   useEffect(() => {
@@ -349,6 +346,25 @@ export default function App() {
   };
 
   const micState = getMicState();
+  const hasLiveText = Boolean((transcript || partialTranscript).trim());
+  const barView = deriveBarView(micState, { hasLiveText, micError });
+  const barActive = barView !== null;
+  // Bar active wins the resize — back to floating-button size otherwise.
+  useEffect(() => {
+    if (barActive) {
+      window.electronAPI?.resizeDictationBar?.(dictationBarPosition);
+      return;
+    }
+    if (isCommandMenuOpen && toastCount > 0) {
+      window.electronAPI?.resizeMainWindow?.("EXPANDED");
+    } else if (isCommandMenuOpen) {
+      window.electronAPI?.resizeMainWindow?.("WITH_MENU");
+    } else if (toastCount > 0) {
+      window.electronAPI?.resizeMainWindow?.("WITH_TOAST");
+    } else {
+      window.electronAPI?.resizeMainWindow?.("BASE");
+    }
+  }, [barActive, dictationBarPosition, isCommandMenuOpen, toastCount]);
 
   const getMicButtonProps = () => {
     const baseClasses =
@@ -390,6 +406,14 @@ export default function App() {
   return (
     <div className="dictation-window">
       <VersionBadge variant="overlay" visible={isCommandMenuOpen || toastCount > 0} />
+      {barActive && (
+        <DictationBar
+          state={barView}
+          transcript={transcript}
+          partialTranscript={partialTranscript}
+          onAutoHide={clearMicError}
+        />
+      )}
       {/* Voice button - position determined by panelStartPosition setting */}
       <div
         className={`fixed bottom-1 z-50 ${
