@@ -137,6 +137,11 @@ function findSubstitutions(origWords, editedWords) {
  *   corrected word as it appears in the edited field. Only `to` is ever added to the
  *   dictionary's operative hint-word list; `from` is provenance for the caller (used by
  *   the anti-oscillation guard) and is never applied as a find/replace rule.
+ *
+ * Corrections are reported even when `to` is already in `existingDictionary`: the word
+ * list is unchanged, but the pair lets the auto-learn caller refresh the row's
+ * provenance and phrase context (a previously-manual word corrected again should pick
+ * up its learned_from + phrases). The caller dedupes the flat list it persists.
  */
 function extractCorrections(originalText, fieldValue, existingDictionary) {
   if (!originalText || !fieldValue) return [];
@@ -154,15 +159,12 @@ function extractCorrections(originalText, fieldValue, existingDictionary) {
   const subs = findSubstitutions(origWords, editedWords);
   if (subs.length > origWords.length * 0.5) return [];
 
-  const safeDict = Array.isArray(existingDictionary) ? existingDictionary : [];
-  const dictSet = new Set(safeDict.map((w) => w.toLowerCase()));
   const seenCorrections = new Set();
   const results = [];
 
   for (const [origWord, correctedWord] of subs) {
     const normalizedCorrected = correctedWord.toLowerCase();
 
-    if (dictSet.has(normalizedCorrected)) continue;
     if (seenCorrections.has(normalizedCorrected)) continue;
     if (origWord.toLowerCase() === normalizedCorrected) continue;
     if (correctedWord.length < 3) continue;

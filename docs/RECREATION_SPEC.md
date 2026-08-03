@@ -74,6 +74,18 @@ Estas são as discrepâncias mais relevantes encontradas entre a documentação 
     `dynamicPromptVocabularyIncludeScreenContext` (default `false`). Ver CLAUDE.md §13 ("Dynamic
     Prompt Vocabulary") e `docs/specs/dynamic-prompt-vocabulary.md`.
 12. ✅ **Corrigido.** Um `whisper-server` ausente (`resources/bin/`) costumava ser um beco sem saída: `WhisperManager.transcribeLocalWhisper()` lançava um erro sem `.code`, o `catch` de `transcribe-local-whisper` em `ipcHandlers.js` não reconhecia a mensagem (nenhum branch de substring casava), e o erro chegava ao renderer sem estrutura — a única recuperação era o script de dev `npm run download:whisper-cpp`. Agora: o erro carrega `err.code = "WHISPER_SERVER_BINARY_MISSING"` desde o throw site (`whisperServer.js`/`whisper.js`), passa por uma função pura de classificação extraída (`src/helpers/whisperErrorClassifier.js`'s `classifyLocalWhisperError()`), sobrevive aos dois pontos de re-wrap em `audioManager.js`, e chega ao toast de erro no `useAudioRecording.js` com um botão de ação "Download" que baixa e instala o binário em tempo de execução (`src/helpers/whisperBinaryInstaller.js`, IPC `download-whisper-server-binary`) em `userData/bin/` — local que `WhisperServerManager.getServerBinaryPath()` já verifica (mesmo padrão do binário CUDA). Escopo apenas para `whisper-server`; `llama-server` tem a mesma lacuna e é um follow-up documentado, não implementado. Ver `docs/specs/whisper-binary-missing-ux.md`.
+13. 🆕 **Novo (não é divergência, é feature nova).** Dictionary Correction Phrase Context:
+    cada correção auto-aprendida no Custom Dictionary agora guarda a frase (sentença
+    delimitada por `.`/`!`/`?`) original e corrigida — colunas `original_phrase`/
+    `corrected_phrase` em `custom_dictionary` (migração aditiva idempotente, local-only
+    como `learned_from`, fora do push de sync). `extractCorrections()` (`correctionLearner.js`)
+    permanece intacto; `autoLearnDictionary.js` extrai a frase via novo helper
+    `extractSentence()` e a passa a `setDictionary()` via `phrasesByLowerWord`
+    (Map<lower(to), {original_phrase, corrected_phrase}>, somente linhas `learned` novas).
+    Novo canal IPC `db-get-dictionary-with-provenance` (preload: `getDictionaryWithProvenance`)
+    expõe source + frases ao renderer. `DictionaryView.tsx` mostra só a palavra corrigida,
+    com ícone `BookOpen` que revela frase original/corrigida ao clicar; linhas
+    `source='manual'` não têm ícone. Ver `docs/specs/dictionary-correction-phrase-context.md`.
 
 ---
 

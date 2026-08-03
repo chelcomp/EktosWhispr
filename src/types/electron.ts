@@ -587,6 +587,15 @@ declare global {
       // Dictionary operations
       getDictionary: () => Promise<string[]>;
       setDictionary: (words: string[]) => Promise<{ success: boolean }>;
+      getDictionaryWithProvenance: () => Promise<
+        Array<{
+          word: string;
+          source: string;
+          learned_from?: string | null;
+          original_phrase?: string | null;
+          corrected_phrase?: string | null;
+        }>
+      >;
       onDictionaryUpdated?: (callback: (words: string[]) => void) => () => void;
       getLastTargetAppName?: () => Promise<string | null>;
       getNoteAudio?: (noteId: number) => Promise<ArrayBuffer | null>;

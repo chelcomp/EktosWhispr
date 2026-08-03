@@ -30,13 +30,19 @@ test("each returned entry carries both the original and corrected word", () => {
   assert.equal(match.to, "Sinead");
 });
 
-test("skips corrections already in the dictionary", () => {
+test("reports corrections whose corrected word is already in the dictionary", () => {
+  // The word list is unchanged by the caller (setDictionary dedupes), but the
+  // pair must still be reported so auto-learn can refresh the existing row's
+  // learned_from + phrase context on a re-correction.
   const corrections = extractCorrections(
     "Shunade came to visit",
     "Sinead came to visit",
     ["sinead"]
   );
-  assert.deepEqual(corrections, []);
+  assert.ok(
+    corrections.some((c) => c.to === "Sinead"),
+    `expected a Sinead entry in ${JSON.stringify(corrections)}`
+  );
 });
 
 test("skips short corrections under 3 characters", () => {

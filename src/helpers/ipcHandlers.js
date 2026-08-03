@@ -1253,6 +1253,10 @@ class IPCHandlers {
       return this.databaseManager.getDictionary();
     });
 
+    ipcMain.handle("db-get-dictionary-with-provenance", async () => {
+      return this.databaseManager.getDictionaryWithProvenance();
+    });
+
     ipcMain.handle("db-set-dictionary", async (event, words) => {
       if (!Array.isArray(words)) {
         throw new Error("words must be an array");

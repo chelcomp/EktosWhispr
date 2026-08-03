@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   BookOpen,
@@ -22,8 +22,33 @@ const parseWords = (text: string): string[] =>
   text
     .split(/[,\n]/)
     .map((w) => w.trim())
-    .filter(Boolean);
 
+// Wraps every case-insensitive occurrence of `word` inside `text` in a
+// highlighted <strong>, so the reveal shows which part of the sentence is the
+// original mis-transcribed word / the corrected word.
+function HighlightWord({ text, word }: { text: string; word: string | null }) {
+  if (!word) return <>{text}</>;
+  const lowerText = text.toLowerCase();
+  const lowerWord = word.toLowerCase();
+  const parts: ReactNode[] = [];
+  let from = 0;
+  let key = 0;
+  while (true) {
+    const at = lowerText.indexOf(lowerWord, from);
+    if (at === -1) {
+      if (from < text.length) parts.push(text.slice(from));
+      break;
+    }
+    if (at > from) parts.push(text.slice(from, at));
+    parts.push(
+      <strong key={key++} className="text-primary font-semibold">
+        {text.slice(at, at + word.length)}
+      </strong>
+    );
+    from = at + word.length;
+  }
+  return <>{parts}</>;
+}
 export default function DictionaryView() {
   const { t } = useTranslation();
   const { customDictionary, setCustomDictionary } = useSettings();
@@ -37,6 +62,44 @@ export default function DictionaryView() {
   const [editValue, setEditValue] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
   const addInputRef = useRef<HTMLInputElement>(null);
+
+  // Phrase context for auto-learned words (original_phrase/corrected_phrase),
+  // fetched from the main process — the settings store only holds flat string[].
+  const [provenance, setProvenance] = useState<
+    Record<
+      string,
+      { source: string; learned_from: string | null; original_phrase: string | null; corrected_phrase: string | null }
+    >
+  >({});
+  const [revealedWord, setRevealedWord] = useState<string | null>(null);
+
+  const refreshProvenance = useCallback(async () => {
+    try {
+      const rows = await window.electronAPI.getDictionaryWithProvenance();
+      const map: Record<
+        string,
+        { source: string; learned_from: string | null; original_phrase: string | null; corrected_phrase: string | null }
+      > = {};
+      for (const row of rows) {
+        map[row.word.toLowerCase()] = {
+          source: row.source,
+          learned_from: row.learned_from ?? null,
+          original_phrase: row.original_phrase ?? null,
+          corrected_phrase: row.corrected_phrase ?? null,
+        };
+      }
+      setProvenance(map);
+    } catch {
+      // Provenance is decorative — never break the dictionary screen over it.
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshProvenance();
+    return window.electronAPI.onDictionaryUpdated?.(() => {
+      refreshProvenance();
+    });
+  }, [refreshProvenance]);
 
   const pendingImportCount = useMemo(() => parseWords(bulkText).length, [bulkText]);
 
@@ -307,42 +370,83 @@ export default function DictionaryView() {
               <ul>
                 {visibleWords.map((word) => {
                   const isEditing = editingWord === word;
+                  const entry = provenance[word.toLowerCase()];
+                  const hasPhrases = Boolean(
+                    entry &&
+                      entry.source === "learned" &&
+                      entry.original_phrase &&
+                      entry.corrected_phrase
+                  );
+                  const isRevealed = revealedWord === word;
                   return (
                     <li
                       key={word}
-                      className="group flex items-center gap-2 h-9 border-b border-foreground/4 dark:border-white/3 last:border-b-0"
+                      className="group border-b border-foreground/4 dark:border-white/3 last:border-b-0"
                     >
-                      {isEditing ? (
-                        <Input
-                          autoFocus
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") commitEdit();
-                            if (e.key === "Escape") setEditingWord(null);
-                          }}
-                          onBlur={commitEdit}
-                          className="h-7 text-xs flex-1"
-                        />
-                      ) : (
-                        <span className="flex-1 text-xs truncate text-foreground/60">{word}</span>
-                      )}
-                      {!isEditing && (
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                          <button
-                            onClick={() => startEdit(word)}
-                            aria-label={t("dictionary.editWord", { word })}
-                            className="p-1 text-foreground/25 hover:text-foreground/60 transition-colors"
-                          >
-                            <Pencil size={11} />
-                          </button>
-                          <button
-                            onClick={() => handleRemove(word)}
-                            aria-label={t("dictionary.removeWord", { word })}
-                            className="p-1 text-foreground/25 hover:text-destructive/70 transition-colors"
-                          >
-                            <X size={11} strokeWidth={2} />
-                          </button>
+                      <div className="flex items-center gap-2 h-9">
+                        {isEditing ? (
+                          <Input
+                            autoFocus
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") commitEdit();
+                              if (e.key === "Escape") setEditingWord(null);
+                            }}
+                            onBlur={commitEdit}
+                            className="h-7 text-xs flex-1"
+                          />
+                        ) : (
+                          <span className="flex-1 text-xs truncate text-foreground/60">{word}</span>
+                        )}
+                        {!isEditing && (
+                          <>
+                            {hasPhrases && (
+                              <button
+                                onClick={() => setRevealedWord(isRevealed ? null : word)}
+                                aria-label={t("dictionary.revealPhrases", { word })}
+                                className={`p-1 transition-colors ${
+                                  isRevealed
+                                    ? "text-primary"
+                                    : "text-foreground/25 hover:text-primary/70"
+                                }`}
+                              >
+                                <BookOpen size={11} />
+                              </button>
+                            )}
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                              <button
+                                onClick={() => startEdit(word)}
+                                aria-label={t("dictionary.editWord", { word })}
+                                className="p-1 text-foreground/25 hover:text-foreground/60 transition-colors"
+                              >
+                                <Pencil size={11} />
+                              </button>
+                              <button
+                                onClick={() => handleRemove(word)}
+                                aria-label={t("dictionary.removeWord", { word })}
+                                className="p-1 text-foreground/25 hover:text-destructive/70 transition-colors"
+                              >
+                                <X size={11} strokeWidth={2} />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      {isRevealed && hasPhrases && (
+                        <div className="px-1 pb-2.5 flex flex-col gap-1 text-[11px] leading-snug">
+                          <p className="text-foreground/60">
+                            <span className="text-foreground/30 mr-1.5">
+                              {t("dictionary.originalPhrase")}:
+                            </span>
+                            <HighlightWord text={entry!.original_phrase} word={entry!.learned_from} />
+                          </p>
+                          <p className="text-foreground/60">
+                            <span className="text-foreground/30 mr-1.5">
+                              {t("dictionary.correctedPhrase")}:
+                            </span>
+                            <HighlightWord text={entry!.corrected_phrase} word={word} />
+                          </p>
                         </div>
                       )}
                     </li>
