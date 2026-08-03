@@ -1,6 +1,6 @@
 # Native Design System + Dictation Bar
 
-> **Status:** 📝 Draft — brainstorming design doc, slice 1 (design system + dictation bar). Awaiting user review.
+> **Status:** ✅ Approved — user approved the design (mockups + this spec) on 2026-08-03; implementation plan at `docs/superpowers/plans/2026-08-03-native-design-system-dictation-bar.md`.
 
 ## TL;DR
 
@@ -111,9 +111,13 @@ The window keeps `hasShadow: false`; the pill shadow from the mockup is CSS (ren
 - **New setting** `dictationBarPosition` added to settingsStore with default `"bottom"`; no migration needed (missing = default).
 - **No data changes**; no DB migration.
 
-## Open Questions (for user review)
+## Decisions (open questions resolved at approval, 2026-08-03)
 
-1. **Idle behavior**: keep the current round floating button when not dictating (recommended for this slice), or hide everything? (Button restyle is part of the navigation/polish slice.)
-2. **Manual theme toggle**: hide it now (system-following), or keep it as an override until the settings slice?
-3. **Caption data source**: live interim transcript tail is the plan — confirm this matches the current `useAudioRecording` transcript stream (to be verified during implementation).
-4. **Bar position setting**: name/placement in settings deferred to the settings slice; expose only in the config store now — OK?
+1. **Idle behavior**: keep the current round floating button when not dictating. Restyle is part of a later polish slice.
+2. **Manual theme toggle**: keep it as-is this slice (default is already `auto` = follows the OS via `useTheme`/`matchMedia`); no settings changes in slice 1. The `nativeTheme` main-process route is not needed for dark/light in this slice — the renderer already follows the OS.
+3. **Caption data source**: tail of the live transcript — `useAudioRecording` already exposes both `transcript` (finalized) and `partialTranscript` (interim); the caption slides those.
+4. **Bar position setting**: `dictationBarPosition` lives only in `settingsStore` (`"bottom" | "top"`, default `"bottom"`); UI placement deferred to the settings slice. The renderer passes the position over IPC on each `resize-dictation-bar` call.
+
+Additional user decisions from the same session (recorded for later slices, not part of slice 1):
+- **No search anywhere** in the app ("se precisa busca é pq não atingiu o objetivo") — applies to navigation/settings slices.
+- **Settings: each option lives in exactly one place**; no "Recomendado" category; Simple mode = the 6 essentials (idioma, microfone, atalho, iniciar com Windows, sons, salvar) shown as a subset of the same items, Advanced = everything.
