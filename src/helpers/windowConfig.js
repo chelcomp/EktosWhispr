@@ -36,6 +36,12 @@ const WINDOW_SIZES = {
   EXPANDED: { width: 400, height: 500 },
 };
 
+const DICTATION_BAR = {
+  WIDTH_RATIO: 0.2, // max 20% of the screen width (user requirement, 2026-08-03)
+  HEIGHT: 40, // 36px pill + 2px breathing room for the CSS shadow
+  MARGIN: 2, // gap to the taskbar / top edge
+};
+
 // Main dictation window configuration
 const MAIN_WINDOW_CONFIG = {
   width: WINDOW_SIZES.BASE.width,
@@ -180,6 +186,21 @@ class WindowPositionUtil {
     return { x, y, width, height };
   }
 
+  static getDictationBarPosition(display, position = "bottom") {
+    const workArea = display.workArea || display.bounds;
+    const width = Math.round(workArea.width * DICTATION_BAR.WIDTH_RATIO);
+    const height = DICTATION_BAR.HEIGHT;
+    const x = Math.max(
+      workArea.x,
+      Math.round(workArea.x + (workArea.width - width) / 2)
+    );
+    const y =
+      position === "top"
+        ? Math.max(0, workArea.y + DICTATION_BAR.MARGIN)
+        : Math.max(0, workArea.y + workArea.height - height - DICTATION_BAR.MARGIN);
+    return { x, y, width, height };
+  }
+
   static getNotificationPosition(display) {
     const { width, height } = NOTIFICATION_WINDOW_CONFIG;
     const MARGIN = 16;
@@ -282,5 +303,6 @@ module.exports = {
   TRANSCRIPTION_PREVIEW_CONFIG,
   TRANSCRIPTION_PREVIEW_SIZE_LIMITS,
   WINDOW_SIZES,
+  DICTATION_BAR,
   WindowPositionUtil,
 };
