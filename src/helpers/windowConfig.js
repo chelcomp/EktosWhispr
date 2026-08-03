@@ -266,6 +266,21 @@ class WindowPositionUtil {
   }
 }
 
+// Win11 background material (Mica) — best-effort. transparent windows ignore
+// it; the fallback is the existing transparent/solid behavior (accepted
+// deviation, spec "Material / Mica").
+function applyMica(win) {
+  if (!win || process.platform !== "win32" || typeof win.setBackgroundMaterial !== "function") {
+    return false;
+  }
+  try {
+    win.setBackgroundMaterial("mica");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const AGENT_OVERLAY_CONFIG = {
   width: 420,
   height: 300,
@@ -305,4 +320,5 @@ module.exports = {
   WINDOW_SIZES,
   DICTATION_BAR,
   WindowPositionUtil,
+  applyMica,
 };

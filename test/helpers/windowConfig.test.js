@@ -59,3 +59,52 @@ test("getDictationBarPosition falls back to display.bounds when workArea is miss
   const pos = WindowPositionUtil.getDictationBarPosition(display, "bottom");
   assert.equal(pos.y, 800 - 40 - 2);
 });
+
+const originalPlatform = process.platform;
+function setPlatform(platform) {
+  Object.defineProperty(process, "platform", { value: platform });
+}
+
+test("applyMica is a no-op on non-Windows", () => {
+  setPlatform("linux");
+  try {
+    const { applyMica } = loadWindowConfig();
+    const calls = [];
+    assert.equal(applyMica({ setBackgroundMaterial: (m) => calls.push(m) }), false);
+    assert.equal(calls.length, 0);
+  } finally {
+    setPlatform(originalPlatform);
+  }
+});
+
+test("applyMica is a no-op when the window has no setBackgroundMaterial", () => {
+  setPlatform("win32");
+  try {
+    const { applyMica } = loadWindowConfig();
+    assert.equal(applyMica({}), false);
+  } finally {
+    setPlatform(originalPlatform);
+  }
+});
+
+test("applyMica requests mica material on Win32", () => {
+  setPlatform("win32");
+  try {
+    const { applyMica } = loadWindowConfig();
+    const calls = [];
+    assert.equal(applyMica({ setBackgroundMaterial: (m) => calls.push(m) }), true);
+    assert.deepEqual(calls, ["mica"]);
+  } finally {
+    setPlatform(originalPlatform);
+  }
+});
+
+test("applyMica swallows API failures", () => {
+  setPlatform("win32");
+  try {
+    const { applyMica } = loadWindowConfig();
+    assert.equal(applyMica({ setBackgroundMaterial: () => { throw new Error("unsupported"); } }), false);
+  } finally {
+    setPlatform(originalPlatform);
+  }
+});

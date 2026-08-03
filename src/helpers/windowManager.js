@@ -8,6 +8,7 @@ const DevServerManager = require("./devServerManager");
 const { i18nMain } = require("./i18nMain");
 const { DEV_SERVER_PORT } = DevServerManager;
 const {
+  applyMica,
   MAIN_WINDOW_CONFIG,
   CONTROL_PANEL_CONFIG,
   AGENT_OVERLAY_CONFIG,
@@ -118,6 +119,8 @@ class WindowManager {
       ...MAIN_WINDOW_CONFIG,
       ...position,
     });
+
+    applyMica(this.mainWindow);
 
     this.setMainWindowInteractivity(false);
     this.registerMainWindowEvents();
@@ -670,6 +673,8 @@ class WindowManager {
     }
 
     this.controlPanelWindow = new BrowserWindow(CONTROL_PANEL_CONFIG);
+
+    applyMica(this.controlPanelWindow);
 
     this.controlPanelWindow.webContents.on("will-navigate", (event, url) => {
       const appUrl = DevServerManager.getAppUrl(true);
