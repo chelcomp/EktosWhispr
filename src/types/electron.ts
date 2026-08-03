@@ -519,6 +519,8 @@ declare global {
       hideWindow: () => Promise<void>;
       showDictationPanel: () => Promise<void>;
       resizeDictationBar: (position: "bottom" | "top") => Promise<{ success: boolean; bounds?: { x: number; y: number; width: number; height: number } }>;
+      getAccentColor: () => Promise<string>;
+      onThemeUpdated: (callback: (data: { dark: boolean; accent: string }) => void) => () => void;
       onToggleDictation: (callback: () => void) => () => void;
       onToggleVoiceAgent?: (callback: () => void) => () => void;
       onStartDictation?: (callback: () => void) => () => void;

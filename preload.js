@@ -357,6 +357,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("set-notification-interactivity", interactive),
   resizeMainWindow: (sizeKey) => ipcRenderer.invoke("resize-main-window", sizeKey),
   resizeDictationBar: (position) => ipcRenderer.invoke("resize-dictation-bar", position),
+  getAccentColor: () => ipcRenderer.invoke("get-accent-color"),
+  onThemeUpdated: registerListener(
+    "theme-updated",
+    (callback) => (_event, data) => callback(data)
+  ),
 
   // Update functions
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),

@@ -1,9 +1,10 @@
-const { ipcMain, app, shell, BrowserWindow, systemPreferences, net } = require("electron");
+const { ipcMain, app, shell, BrowserWindow, nativeTheme, systemPreferences, net } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
 const crypto = require("crypto");
 const debugLogger = require("./debugLogger");
+const { formatAccentColor, FALLBACK_ACCENT } = require("./accentColor");
 const { BYOK_API_KEYS } = require("../config/secretKeys");
 const { classifyAndLog } = require("./networkErrors");
 const { classifyLocalWhisperError } = require("./whisperErrorClassifier");
@@ -1054,6 +1055,37 @@ class IPCHandlers {
     ipcMain.handle("resize-dictation-bar", (event, position) => {
       return this.windowManager.resizeToDictationBar(position === "top" ? "top" : "bottom");
     });
+
+    ipcMain.handle("get-accent-color", () => {
+      if (process.platform !== "win32" || typeof systemPreferences?.getAccentColor !== "function") {
+        return FALLBACK_ACCENT;
+      }
+      try {
+        return formatAccentColor(systemPreferences.getAccentColor()) || FALLBACK_ACCENT;
+      } catch {
+        return FALLBACK_ACCENT;
+      }
+    });
+
+    if (!this._themeWatchInstalled) {
+      this._themeWatchInstalled = true;
+      nativeTheme.on("updated", () => {
+        const accent = (() => {
+          if (process.platform !== "win32" || typeof systemPreferences?.getAccentColor !== "function") {
+            return FALLBACK_ACCENT;
+          }
+          try {
+            return formatAccentColor(systemPreferences.getAccentColor()) || FALLBACK_ACCENT;
+          } catch {
+            return FALLBACK_ACCENT;
+          }
+        })();
+        const dark = nativeTheme.shouldUseDarkColors;
+        for (const win of BrowserWindow.getAllWindows()) {
+          win.webContents.send("theme-updated", { dark, accent });
+        }
+      });
+    }
 
     for (const k of BYOK_API_KEYS) {
       ipcMain.handle(`get-${k.base}-key`, () => this.environmentManager[k.get]());

@@ -5,6 +5,7 @@ import TranscriptionPreviewOverlay from "./components/TranscriptionPreviewOverla
 import UpdateNotificationOverlay from "./components/UpdateNotificationOverlay.tsx";
 import WindowControls from "./components/WindowControls.tsx";
 import { useTheme } from "./hooks/useTheme";
+import { useNativeAccent } from "./hooks/useNativeAccent";
 
 const ControlPanel = React.lazy(() => import("./components/ControlPanel.tsx"));
 const OnboardingFlow = React.lazy(() => import("./components/OnboardingFlow.tsx"));
@@ -12,6 +13,7 @@ const AgentOverlay = React.lazy(() => import("./components/AgentOverlay.tsx"));
 
 export default function AppRouter() {
   useTheme();
+  useNativeAccent();
   const params = window.location.search;
 
   if (params.includes("update-notification=true")) {
