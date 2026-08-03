@@ -2772,6 +2772,9 @@
       "cancelRecording": "Cancel recording",
       "cancelProcessing": "Cancel processing"
     },
+    "dictationBar": {
+      "error": "Something went wrong. Check the microphone and try again."
+    },
     "commandMenu": {
       "stopListening": "Stop listening",
       "startListening": "Start listening",

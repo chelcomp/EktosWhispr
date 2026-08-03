@@ -1069,7 +1069,7 @@ class IPCHandlers {
 
     if (!this._themeWatchInstalled) {
       this._themeWatchInstalled = true;
-      nativeTheme.on("updated", () => {
+      nativeTheme?.on?.("updated", () => {
         const accent = (() => {
           if (process.platform !== "win32" || typeof systemPreferences?.getAccentColor !== "function") {
             return FALLBACK_ACCENT;
@@ -1080,7 +1080,7 @@ class IPCHandlers {
             return FALLBACK_ACCENT;
           }
         })();
-        const dark = nativeTheme.shouldUseDarkColors;
+        const dark = nativeTheme?.shouldUseDarkColors ?? false;
         for (const win of BrowserWindow.getAllWindows()) {
           win.webContents.send("theme-updated", { dark, accent });
         }

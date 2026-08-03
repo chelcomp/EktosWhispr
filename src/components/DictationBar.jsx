@@ -12,6 +12,7 @@ export default function DictationBar({
   state,
   transcript = "",
   partialTranscript = "",
+  error = "",
   autoHideMs = 5000,
   onAutoHide,
 }) {
@@ -41,7 +42,7 @@ export default function DictationBar({
         <div className="dictation-bar__error">
           <span className="dictation-bar__error-icon">!</span>
           <span className="dictation-bar__marquee">
-            <span>Could not access the microphone — check system permissions.</span>
+            <span>{error}</span>
           </span>
         </div>
       ) : (

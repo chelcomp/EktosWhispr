@@ -348,6 +348,12 @@ export default function App() {
   const micState = getMicState();
   const hasLiveText = Boolean((transcript || partialTranscript).trim());
   const barView = deriveBarView(micState, { hasLiveText, micError });
+  const barErrorText =
+    typeof micError === "string" && micError.trim()
+      ? micError
+      : micError?.title && micError.title !== "Paste Error"
+        ? micError.title
+        : t("app.dictationBar.error");
   const barActive = barView !== null;
   // Bar active wins the resize — back to floating-button size otherwise.
   useEffect(() => {
@@ -411,6 +417,7 @@ export default function App() {
           state={barView}
           transcript={transcript}
           partialTranscript={partialTranscript}
+          error={barErrorText}
           onAutoHide={clearMicError}
         />
       )}

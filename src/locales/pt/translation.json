@@ -2637,6 +2637,9 @@
       "cancelRecording": "Cancelar gravação",
       "cancelProcessing": "Cancelar processamento"
     },
+    "dictationBar": {
+      "error": "Algo deu errado. Verifique o microfone e tente novamente."
+    },
     "commandMenu": {
       "stopListening": "Parar de ouvir",
       "startListening": "Começar a ouvir",

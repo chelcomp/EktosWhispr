@@ -2,7 +2,7 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-@theme inline {
+@theme {
   /* EktosWhispr Theme — registers color tokens with Tailwind v4.
      These are the light-mode defaults; .dark overrides them below. */
   --color-primary: var(--color-accent);
@@ -1102,7 +1102,7 @@ body:has(.agent-overlay-window) #root {
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
   font-size: 13px;
-  color: var(--color-text-muted, var(--color-muted-foreground));
+  color: var(--color-muted-foreground);
 }
 .dictation-bar__shine {
   position: absolute;

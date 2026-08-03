@@ -31,6 +31,8 @@ export const useAudioRecording = (toast, options = {}) => {
     if (startLockRef.current) return false;
     startLockRef.current = true;
     try {
+      setTranscript("");
+      setPartialTranscript("");
       setMicError(null);
       if (!audioManagerRef.current) return false;
 
