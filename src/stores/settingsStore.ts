@@ -529,6 +529,7 @@ export interface SettingsState
   previewVadMaxMerges: number;
   previewVadMaxMergedMs: number;
   panelStartPosition: "bottom-right" | "center" | "bottom-left";
+  dictationBarPosition: "bottom" | "top";
   showTranscriptionPreview: boolean;
   autoPasteEnabled: boolean;
   autoUnmuteMicEnabled: boolean;
@@ -1265,6 +1266,10 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     if (v === "bottom-right" || v === "center" || v === "bottom-left") return v;
     return "center" as const;
   })(),
+  dictationBarPosition: (() => {
+    const v = readString("dictationBarPosition", "bottom");
+    return v === "bottom" || v === "top" ? v : "bottom";
+  })(),
   showTranscriptionPreview: readBoolean("showTranscriptionPreview", false),
   autoPasteEnabled: readBoolean("autoPasteEnabled", true),
   autoUnmuteMicEnabled: readBoolean("autoUnmuteMicEnabled", false),
@@ -1719,6 +1724,11 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setTheme: (value: "light" | "dark" | "auto") => {
     if (isBrowser) localStorage.setItem("theme", value);
     set({ theme: value });
+  },
+  setDictationBarPosition: (value: "bottom" | "top") => {
+    if (value !== "bottom" && value !== "top") return;
+    if (isBrowser) localStorage.setItem("dictationBarPosition", value);
+    set({ dictationBarPosition: value });
   },
 
   setCloudBackupEnabled: createBooleanSetter("cloudBackupEnabled"),
