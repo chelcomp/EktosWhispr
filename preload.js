@@ -356,6 +356,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setNotificationInteractivity: (interactive) =>
     ipcRenderer.invoke("set-notification-interactivity", interactive),
   resizeMainWindow: (sizeKey) => ipcRenderer.invoke("resize-main-window", sizeKey),
+  resizeDictationBar: (position) => ipcRenderer.invoke("resize-dictation-bar", position),
 
   // Update functions
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),

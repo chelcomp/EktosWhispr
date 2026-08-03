@@ -518,6 +518,7 @@ declare global {
       warmupMicMuteHelper: () => Promise<{ success: boolean }>;
       hideWindow: () => Promise<void>;
       showDictationPanel: () => Promise<void>;
+      resizeDictationBar: (position: "bottom" | "top") => Promise<{ success: boolean; bounds?: { x: number; y: number; width: number; height: number } }>;
       onToggleDictation: (callback: () => void) => () => void;
       onToggleVoiceAgent?: (callback: () => void) => () => void;
       onStartDictation?: (callback: () => void) => () => void;

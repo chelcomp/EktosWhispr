@@ -1051,6 +1051,10 @@ class IPCHandlers {
       return this.windowManager.resizeMainWindow(sizeKey);
     });
 
+    ipcMain.handle("resize-dictation-bar", (event, position) => {
+      return this.windowManager.resizeToDictationBar(position === "top" ? "top" : "bottom");
+    });
+
     for (const k of BYOK_API_KEYS) {
       ipcMain.handle(`get-${k.base}-key`, () => this.environmentManager[k.get]());
       ipcMain.handle(`save-${k.base}-key`, (event, key) => this.environmentManager[k.save](key));
