@@ -415,6 +415,7 @@ export default function App() {
         />
       )}
       {/* Voice button - position determined by panelStartPosition setting */}
+      {!barActive && (
       <div
         className={`fixed bottom-1 z-50 ${
           panelStartPosition === "bottom-left"
@@ -598,6 +599,7 @@ export default function App() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
