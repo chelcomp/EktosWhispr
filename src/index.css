@@ -1061,9 +1061,9 @@ body:has(.agent-overlay-window) #root {
   gap: 10px;
   padding: 0 10px;
   border-radius: 18px;
-  background: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
-  border: 1px solid var(--color-border);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  /* ponytail: fully transparent per user request (2026-08-03); mockup had a
+     frosted pill (rgba + backdrop blur) — restore with background +
+     backdrop-filter if the floating look is wanted again. */
   font-family: var(--font-family-sans);
   font-size: 13px;
   color: var(--color-foreground);
