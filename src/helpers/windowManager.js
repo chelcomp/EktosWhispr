@@ -234,6 +234,20 @@ class WindowManager {
     return { success: true, bounds: { x: newX, y: newY, ...newSize } };
   }
 
+  resizeToDictationBar(position = "bottom") {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return { success: false };
+    }
+    const currentBounds = this.mainWindow.getBounds();
+    const display = screen.getDisplayNearestPoint({
+      x: currentBounds.x + currentBounds.width / 2,
+      y: currentBounds.y + currentBounds.height / 2,
+    });
+    const bounds = WindowPositionUtil.getDictationBarPosition(display, position);
+    this.mainWindow.setBounds(bounds);
+    return { success: true, bounds };
+  }
+
   async loadWindowContent(window, isControlPanel = false, isAgent = false) {
     if (process.env.NODE_ENV === "development") {
       let appUrl = DevServerManager.getAppUrl(isControlPanel);
