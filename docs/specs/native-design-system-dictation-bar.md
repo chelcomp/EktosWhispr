@@ -7,7 +7,7 @@
 Slice 1 of the UI redesign, approved via interactive mockups (visual companion) and user decisions:
 
 1. **Design tokens → native Windows look** (Approach B): replace the Parchment palette with neutral Win11 colors (light `#f3f3f3` / dark `#202020`), Segoe UI on Windows, dynamic Windows accent color, and Mica background material on Win11 (solid fallbacks elsewhere). Dark/light follows the OS.
-2. **Dictation bar**: replace the round floating button while dictating with a horizontal pill bar — 50% screen width × 36px, radius 18px, 13px font, 10px padding — with four states: **capturing** (30 bars + timer), **transcribing** (5 bars left, sliding caption center, timer right), **processing** (35 bars + sweeping shine), **error** (red `!` + slow marquee, auto-hides after 5s). Visible only while capturing/processing/error; positioned **below** (2px above the taskbar) or **above** (2px from the top), always centered.
+2. **Dictation bar**: replace the round floating button while dictating with a horizontal pill bar — **max 20% screen width** × 36px, radius 18px, 13px font, 10px padding — with four states: **capturing** (30 bars + timer), **transcribing** (5 bars left, sliding caption center, timer right), **processing** (35 bars + sweeping shine), **error** (red `!` + slow marquee, auto-hides after 5s). Visible only while capturing/processing/error; positioned **below** (2px above the taskbar) or **above** (2px from the top), always centered.
 3. Settings redesign and navigation evolution are **later slices** (own spec cycles).
 
 ## Goal / Problem
@@ -29,8 +29,8 @@ The app's UI uses a custom Parchment brand palette and a small round floating bu
 - Mica on Win11 via `setBackgroundMaterial('mica')`; fallbacks: solid on Win10/Linux, vibrancy on macOS (optional).
 - Existing CSS variables (`--color-parchment-*`, `--color-brand-*`) migrate to the neutral set with a mapping table (see Migration).
 
-### R2 — Dictation bar (approved mockups v10–v15)
-- **Consistency**: every state shares height 36px, width 50% of screen, font 13px, internal padding 10px, radius 18px.
+### R2 — Dictation bar (approved mockups v10–v16)
+- **Consistency**: every state shares height 36px, width **min(20% of screen width)** (user requirement, 2026-08-03: "20% of the screen max"), font 13px, internal padding 10px, radius 18px.
 - **Visibility**: appears only while capturing, processing, or error; error auto-hides after 5s. No dictation = no bar (idle keeps the existing floating button — see D4).
 - **Position**: horizontally centered; **bottom** = 2px above the taskbar (`workArea.y + workArea.height - height - 2` — `workArea` already ends at the taskbar), **top** = 2px from the top (`workArea.y + 2`). New setting `dictationBarPosition: "bottom" | "top"` (default `bottom`).
 - **States** (reusing existing `isRecording`/`isProcessing` flows):
@@ -72,7 +72,7 @@ Mapping: `--color-parchment-bg → --color-bg`, `--color-parchment-text → --co
 
 ### Dictation bar (App.jsx + windowConfig.js)
 
-Window: reuse `mainWindow`; during active dictation resize to `{ width: round(workArea.width * 0.5), height: 40 }` (36px pill + 2px breathing room for the shadow) and position via a new `WindowPositionUtil.getDictationBarPosition(display, position)`:
+Window: reuse `mainWindow`; during active dictation resize to `{ width: round(workArea.width * 0.2), height: 40 }` (36px pill + 2px breathing room for the shadow) and position via a new `WindowPositionUtil.getDictationBarPosition(display, position)`:
 
 ```
 x = workArea.x + round((workArea.width - width) / 2)
