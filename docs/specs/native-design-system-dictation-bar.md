@@ -1,6 +1,6 @@
 # Native Design System + Dictation Bar
 
-> **Status:** ✅ Approved — user approved the design (mockups + this spec) on 2026-08-03; implementation plan at `docs/superpowers/plans/2026-08-03-native-design-system-dictation-bar.md`.
+> **Status:** ✅ Implemented — verified 2026-08-03 via SDD (9 tasks + final-review fix wave). Gate: full suite 844 pass / 1 pre-existing environmental fail (activeWindowCapture) / 33 skip; typecheck, eslint, prettier, build:renderer all green.
 
 ## TL;DR
 
