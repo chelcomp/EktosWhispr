@@ -94,16 +94,26 @@ test("default prompt bundles (en, pt) carry the placeholder tokens across the sy
     ["en", enPrompts],
     ["pt", ptPrompts],
   ]) {
-    for (const token of ["{{languages}}", "{{user-dictionary}}", "{{screen-ocr}}"]) {
+    for (const token of ["{{languages}}", "{{user-dictionary}}"]) {
       assert.ok(
         bundle.systemInstructions.includes(token),
         `${locale}.systemInstructions is missing ${token}`
       );
+    }
+    for (const token of ["{{languages}}", "{{user-dictionary}}", "{{screen-ocr}}"]) {
       assert.ok(bundle.fullPrompt.includes(token), `${locale}.fullPrompt is missing ${token}`);
     }
     assert.ok(
       bundle.cleanupPrompt.includes("{{user-transcription}}"),
       `${locale}.cleanupPrompt is missing {{user-transcription}}`
+    );
+    assert.ok(
+      bundle.cleanupPrompt.includes("{{screen-ocr}}"),
+      `${locale}.cleanupPrompt is missing {{screen-ocr}}`
+    );
+    assert.ok(
+      !bundle.cleanupPrompt.includes("{{languages}}"),
+      `${locale}.cleanupPrompt still references {{languages}}`
     );
     assert.ok(
       !bundle.cleanupPrompt.includes("{{systemInstructions}}"),
@@ -126,15 +136,15 @@ test("cleanup resolution never leaks the literal {{systemInstructions}} token", 
     "user transcription not threaded into resolved cleanup prompt"
   );
   assert.ok(
-    result.includes("<transcription>") && result.includes("</transcription>"),
-    "transcription not wrapped in <transcription> tags"
+    result.includes("<user-transcription>") && result.includes("</user-transcription>"),
+    "transcription not wrapped in <user-transcription> tags"
   );
   assert.ok(
     !result.includes("{{user-transcription}}"),
     "literal {{user-transcription}} leaked into resolved cleanup prompt"
   );
   assert.ok(
-    result.includes("transcription cleaning engine"),
+    result.includes("As a transcription cleaner"),
     "cleanup system instructions missing from resolved prompt"
   );
 });
@@ -161,7 +171,7 @@ test("no append-if-missing: a cleanup template without the {{user-transcription}
 
 test("dictationAgent resolution is not polluted by cleanup system instructions", () => {
   const result = resolvePrompt("dictationAgent", { agentName: null });
-  assert.ok(!result.includes("transcription cleaning engine"));
+  assert.ok(!result.includes("PRESERVE VERBATIM CONTENT"));
 });
 
 test("default cleanupPrompt (en, pt) no longer references the <transcript> tag", () => {
@@ -256,8 +266,9 @@ test("system and user placeholders substitute within their own template (no cros
   assert.ok(system.includes("alpha"), "dictionary block not substituted");
   assert.ok(!system.includes("{{user-dictionary}}"), "{{user-dictionary}} leaked");
 
-  // The default user template carries only the transcription; it must not receive
-  // system-only blocks (language/dictionary/screen-context) via the shared tokens.
+  // The default user template carries the transcription and the screen-context
+  // block (via its own {{screen-ocr}} token); it must not receive the
+  // system-only language/dictionary blocks.
   assert.ok(!user.includes("alpha"), "dictionary block leaked into user");
-  assert.ok(!user.includes("screen_context"), "screen block leaked into user");
+  assert.ok(user.includes("screen text"), "screen block missing from user template");
 });

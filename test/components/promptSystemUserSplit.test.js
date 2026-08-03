@@ -62,7 +62,10 @@ test("openai provider sends system = resolved system template and user = resolve
     const expectedSystem = resolveSystemPrompt("cleanup", { agentName: null });
     assert.equal(systemMsg.content, expectedSystem);
     assert.ok(!systemMsg.content.includes("the dictated text"));
-    assert.ok(!systemMsg.content.includes("<transcription>\nthe dictated text"), "user wrapper leaked into system");
+    assert.ok(
+      !systemMsg.content.includes("<user-transcription>\nthe dictated text"),
+      "user wrapper leaked into system"
+    );
 
     // User message: the resolved user template with {{user-transcription}}
     // replaced — no system-template content appended or concatenated.

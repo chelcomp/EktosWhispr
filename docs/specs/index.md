@@ -13,7 +13,7 @@
 | `llama-server-vram-tuning.md` | Implemented | KV-cache q8_0, --fit on, auto context doubling up to 64K |
 | `dictation-language-detection-fix.md` | Implemented | Whisper `--language` flag + language mismatch retry |
 | `live-preview-vad-sensitivity.md` | Implemented | Separate "Live" VAD tab (energy-based) from Silero VAD tab |
-| `prompt-template-placeholders.md` | Implemented | `{{screen-ocr}}` positional placeholder in system prompts |
+| `prompt-template-placeholders.md` | Implemented | `{{screen-ocr}}`/`{{user-dictionary}}`/`{{languages}}` positional tokens in prompt templates |
 
 ---
 
