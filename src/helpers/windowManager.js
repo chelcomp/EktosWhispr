@@ -30,8 +30,6 @@ class WindowManager {
     this._transcriptionPreviewReady = false;
     this._transcriptionPreviewPendingSends = [];
     this._transcriptionPreviewReadyTimeout = null;
-    this.updateNotificationWindow = null;
-    this._updateNotificationDismissed = false;
     this.notificationPrefs = {
       notificationsEnabled: true,
       notifyCalendarReminders: true,
@@ -46,11 +44,13 @@ class WindowManager {
     this.macCompoundPushState = null;
     this.winPushState = null;
     this._cachedActivationMode = "tap";
-    this._floatingIconAutoHide = false;
+    this._floatingIconAutoHide = true; // default matches settingsStore
     this._agentAnimationState = null;
     this._panelStartPosition = "bottom-right";
     this._isDictatingToggle = false;
     this._pendingMeetingNoteNavigation = null;
+    this._updateNotificationDismissed = false;
+    this._updateNotificationAutoDismiss = null;
 
     app.on("before-quit", () => {
       this.isQuitting = true;
@@ -246,7 +246,39 @@ class WindowManager {
       x: currentBounds.x + currentBounds.width / 2,
       y: currentBounds.y + currentBounds.height / 2,
     });
-    const bounds = WindowPositionUtil.getDictationBarPosition(display, position);
+    // Always center the dictation bar horizontally
+    const bounds = WindowPositionUtil.getDictationBarPosition(display, position, "center");
+    this.mainWindow.setBounds(bounds);
+    // Ensure the window is visible — it may have been hidden by the idle-hide
+    // effect between the hotkey press and the recording state change.
+    if (typeof this.mainWindow.showInactive === "function") {
+      this.mainWindow.showInactive();
+    } else {
+      this.mainWindow.show();
+    }
+    return { success: true, bounds };
+  }
+
+  /**
+   * Resize mainWindow to a custom notification height, keeping centered bottom position
+   */
+  resizeToNotification(height, position = "bottom") {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return { success: false };
+    }
+    const currentBounds = this.mainWindow.getBounds();
+    const display = screen.getDisplayNearestPoint({
+      x: currentBounds.x + currentBounds.width / 2,
+      y: currentBounds.y + currentBounds.height / 2,
+    });
+    // Always center horizontally, use custom height
+    const baseBounds = WindowPositionUtil.getDictationBarPosition(display, position, "center");
+    const bounds = {
+      x: baseBounds.x,
+      y: baseBounds.y,
+      width: baseBounds.width,
+      height: height,
+    };
     this.mainWindow.setBounds(bounds);
     return { success: true, bounds };
   }
@@ -343,7 +375,8 @@ class WindowManager {
     const downTime = Date.now();
 
     if (this.textEditMonitor) this.textEditMonitor.captureTargetPid();
-    this.showDictationPanel();
+    // Show the dictation bar immediately, not the idle 96×96 square.
+    this.resizeToDictationBar();
 
     const safetyTimeoutId = setTimeout(() => {
       if (this.macCompoundPushState?.active) {
@@ -467,7 +500,8 @@ class WindowManager {
     const MIN_HOLD_DURATION_MS = 150;
     const downTime = Date.now();
 
-    this.showDictationPanel();
+    // Show the dictation bar immediately, not the idle 96×96 square.
+    this.resizeToDictationBar();
 
     this.winPushState = {
       active: true,
@@ -521,7 +555,9 @@ class WindowManager {
       return;
     }
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.showDictationPanel();
+      // Do NOT showDictationPanel() here — that shows the window at its current
+      // (idle 96×96) size, a stray square. The renderer drives the resize, which
+      // calls resizeToDictationBar() → showInactive() at the bar size.
       this.mainWindow.webContents.send(channel);
       this._isDictatingToggle = !this._isDictatingToggle;
     }
@@ -544,7 +580,7 @@ class WindowManager {
       return;
     }
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.showDictationPanel();
+      // Do NOT showDictationPanel() here — same reason as _sendDictationToggle.
       this.mainWindow.webContents.send("start-dictation");
     }
   }
@@ -1248,91 +1284,44 @@ class WindowManager {
 
   async showUpdateNotification(info) {
     if (this._updateNotificationDismissed) return;
-    if (this.updateNotificationWindow && !this.updateNotificationWindow.isDestroyed()) {
-      this.updateNotificationWindow.close();
-      this.updateNotificationWindow = null;
-    }
+    // Clear any existing auto-dismiss timer
     if (this._updateNotificationAutoDismiss) {
       clearTimeout(this._updateNotificationAutoDismiss);
       this._updateNotificationAutoDismiss = null;
     }
-
-    const display = screen.getPrimaryDisplay();
-    const position = WindowPositionUtil.getNotificationPosition(display);
-
-    this.updateNotificationWindow = new BrowserWindow({
-      ...NOTIFICATION_WINDOW_CONFIG,
-      ...position,
-    });
-
-    WindowPositionUtil.setupAlwaysOnTop(this.updateNotificationWindow);
-
-    if (process.env.NODE_ENV === "development") {
-      await DevServerManager.waitForDevServer();
-      await this.updateNotificationWindow.loadURL(
-        `${DevServerManager.DEV_SERVER_URL}?update-notification=true`
-      );
-    } else {
-      const fileInfo = DevServerManager.getAppFilePath(false);
-      await this.updateNotificationWindow.loadFile(fileInfo.path, {
-        query: { ...fileInfo.query, "update-notification": "true" },
+    // Send IPC to mainWindow to show update overlay
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send("main-window-overlay-notification", {
+        type: "update",
+        data: {
+          version: info?.version,
+          releaseDate: info?.releaseDate,
+        },
       });
-    }
-
-    this._pendingUpdateNotificationData = {
-      version: info?.version,
-      releaseDate: info?.releaseDate,
-    };
-
-    this._updateNotificationReadyFallback = setTimeout(() => {
-      this._updateNotificationReadyFallback = null;
-      if (this.updateNotificationWindow && !this.updateNotificationWindow.isDestroyed()) {
-        this.updateNotificationWindow.webContents.send(
-          "update-notification-data",
-          this._pendingUpdateNotificationData
-        );
-        this.updateNotificationWindow.showInactive();
-      }
-    }, 3000);
-
-    this._updateNotificationAutoDismiss = setTimeout(() => {
-      this.dismissUpdateNotification({ persistent: false });
-    }, 5000);
-
-    this.updateNotificationWindow.on("closed", () => {
-      this.updateNotificationWindow = null;
-      if (this._updateNotificationAutoDismiss) {
-        clearTimeout(this._updateNotificationAutoDismiss);
-        this._updateNotificationAutoDismiss = null;
-      }
-    });
-  }
-
-  showUpdateNotificationWindow() {
-    if (this._updateNotificationReadyFallback) {
-      clearTimeout(this._updateNotificationReadyFallback);
-      this._updateNotificationReadyFallback = null;
-    }
-    if (this.updateNotificationWindow && !this.updateNotificationWindow.isDestroyed()) {
-      this.updateNotificationWindow.showInactive();
+      // Resize to notification height (update card is ~92px + padding)
+      this.resizeToNotification(132);
+      // Auto-dismiss after 5 seconds
+      this._updateNotificationAutoDismiss = setTimeout(() => {
+        this.dismissUpdateNotification({ persistent: false });
+      }, 5000);
     }
   }
+
 
   dismissUpdateNotification({ persistent = true } = {}) {
-    this._pendingUpdateNotificationData = null;
     if (persistent) this._updateNotificationDismissed = true;
-    if (this._updateNotificationReadyFallback) {
-      clearTimeout(this._updateNotificationReadyFallback);
-      this._updateNotificationReadyFallback = null;
-    }
     if (this._updateNotificationAutoDismiss) {
       clearTimeout(this._updateNotificationAutoDismiss);
       this._updateNotificationAutoDismiss = null;
     }
-    if (this.updateNotificationWindow && !this.updateNotificationWindow.isDestroyed()) {
-      this.updateNotificationWindow.close();
+    // Send IPC to mainWindow to hide update overlay
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send("main-window-overlay-notification", {
+        type: "clear",
+      });
+      // Resize back to dictation bar
+      this.resizeToDictationBar("bottom");
     }
-    this.updateNotificationWindow = null;
   }
 
   sendToControlPanel(channel, data) {

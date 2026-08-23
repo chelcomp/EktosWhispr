@@ -22,25 +22,34 @@ function loadWindowConfig() {
 
 const fullHd = { workArea: { x: 0, y: 0, width: 1920, height: 1040 } };
 
-test("getDictationBarPosition centers horizontally, width = 20% of workArea, height 40", () => {
+test("getDictationBarPosition anchors right by default (same side as the idle ball), width = 20% of workArea, height 48", () => {
   const { WindowPositionUtil } = loadWindowConfig();
   const pos = WindowPositionUtil.getDictationBarPosition(fullHd, "bottom");
   assert.equal(pos.width, 384); // round(1920 * 0.2)
-  assert.equal(pos.height, 40);
-  assert.equal(pos.x, Math.round((1920 - 384) / 2));
+  assert.equal(pos.height, 48);
+  assert.equal(pos.x, 1920 - 384 - 2);
+});
+
+test("getDictationBarPosition honors alignX left/center anchors", () => {
+  const { WindowPositionUtil } = loadWindowConfig();
+  assert.equal(WindowPositionUtil.getDictationBarPosition(fullHd, "bottom", "left").x, 2);
+  assert.equal(
+    WindowPositionUtil.getDictationBarPosition(fullHd, "bottom", "center").x,
+    Math.round((1920 - 384) / 2)
+  );
 });
 
 test("getDictationBarPosition bottom sits 2px above the workArea bottom edge", () => {
   const { WindowPositionUtil } = loadWindowConfig();
   const pos = WindowPositionUtil.getDictationBarPosition(fullHd, "bottom");
-  assert.equal(pos.y, 1040 - 40 - 2);
+  assert.equal(pos.y, 1040 - 48 - 2);
 });
 
-test("getDictationBarPosition top sits 2px below the workArea top edge (respects multi-monitor origin)", () => {
+test("getDictationBarPosition top sits 2px below the workArea top edge, right-anchored (respects multi-monitor origin)", () => {
   const { WindowPositionUtil } = loadWindowConfig();
   const display = { workArea: { x: -1920, y: 40, width: 1920, height: 1000 } };
   const pos = WindowPositionUtil.getDictationBarPosition(display, "top");
-  assert.equal(pos.x, -1920 + Math.round((1920 - 384) / 2));
+  assert.equal(pos.x, -1920 + 1920 - 384 - 2);
   assert.equal(pos.y, 42);
 });
 
@@ -57,7 +66,7 @@ test("getDictationBarPosition falls back to display.bounds when workArea is miss
   const { WindowPositionUtil } = loadWindowConfig();
   const display = { bounds: { x: 0, y: 0, width: 1000, height: 800 } };
   const pos = WindowPositionUtil.getDictationBarPosition(display, "bottom");
-  assert.equal(pos.y, 800 - 40 - 2);
+  assert.equal(pos.y, 800 - 48 - 2);
 });
 
 const originalPlatform = process.platform;

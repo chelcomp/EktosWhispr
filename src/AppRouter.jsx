@@ -2,7 +2,6 @@ import React, { Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import App from "./App.jsx";
 import TranscriptionPreviewOverlay from "./components/TranscriptionPreviewOverlay.tsx";
-import UpdateNotificationOverlay from "./components/UpdateNotificationOverlay.tsx";
 import WindowControls from "./components/WindowControls.tsx";
 import { useTheme } from "./hooks/useTheme";
 import { useNativeAccent } from "./hooks/useNativeAccent";
@@ -15,10 +14,6 @@ export default function AppRouter() {
   useTheme();
   useNativeAccent();
   const params = window.location.search;
-
-  if (params.includes("update-notification=true")) {
-    return <UpdateNotificationOverlay />;
-  }
 
   if (params.includes("transcription-preview=true")) {
     return <TranscriptionPreviewOverlay />;

@@ -6,7 +6,6 @@ import {
   Upload,
   Settings,
   HelpCircle,
-  Search,
   Wand2,
   Braces,
 } from "lucide-react";
@@ -15,7 +14,6 @@ import { cn } from "./lib/utils";
 import SupportDropdown from "./ui/SupportDropdown";
 import { getCachedPlatform } from "../utils/platform";
 import logo from "../assets/logo.svg";
-
 const platform = getCachedPlatform();
 
 export type ControlPanelView =
@@ -25,7 +23,6 @@ interface ControlPanelSidebarProps {
   activeView: ControlPanelView;
   onViewChange: (view: ControlPanelView) => void;
   onOpenSettings: () => void;
-  onOpenSearch?: () => void;
   updateAction?: React.ReactNode;
 }
 
@@ -33,7 +30,6 @@ export default function ControlPanelSidebar({
   activeView,
   onViewChange,
   onOpenSettings,
-  onOpenSearch,
   updateAction,
 }: ControlPanelSidebarProps) {
   const { t } = useTranslation();
@@ -67,28 +63,6 @@ export default function ControlPanelSidebar({
           <p className="text-xs font-semibold text-foreground truncate">EktosWhispr</p>
         </div>
       </div>
-
-      {onOpenSearch && (
-        <div className="px-2 pt-2 pb-1">
-          <button
-            onClick={onOpenSearch}
-            className="group flex items-center w-full h-7 px-2.5 rounded-md border border-border/70 dark:border-white/25 bg-transparent hover:bg-foreground/5 dark:hover:bg-white/5 transition-colors gap-2 outline-none focus-visible:ring-1 focus-visible:ring-primary/30"
-          >
-            <Search size={11} className="text-muted-foreground/50 shrink-0" />
-            <span className="flex-1 text-[11px] text-left text-muted-foreground/50">
-              {t("commandSearch.shortPlaceholder")}
-            </span>
-            <div className="flex items-center gap-0.5 shrink-0">
-              <kbd className="text-[10px] px-1 py-px rounded border border-border/30 dark:border-white/8 bg-muted/40 text-muted-foreground/40 font-mono leading-tight">
-                {platform === "darwin" ? "⌘" : "Ctrl"}
-              </kbd>
-              <kbd className="text-[10px] px-1 py-px rounded border border-border/30 dark:border-white/8 bg-muted/40 text-muted-foreground/40 font-mono leading-tight">
-                K
-              </kbd>
-            </div>
-          </button>
-        </div>
-      )}
 
       <nav className="flex flex-col gap-0.5 px-2 pt-2 pb-2">
         {navItems.map((item) => {

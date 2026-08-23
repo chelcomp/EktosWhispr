@@ -801,6 +801,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   updateNotificationReady: () => ipcRenderer.invoke("update-notification-ready"),
   updateNotificationRespond: (action) => ipcRenderer.invoke("update-notification-respond", action),
 
+  // Main window overlay notifications (consolidated)
+  onMainWindowOverlayNotification: registerListener(
+    "main-window-overlay-notification",
+    (callback) => (_event, payload) => callback(payload)
+  ),
+  mainOverlayNotificationRespond: (action) => ipcRenderer.invoke("main-overlay-notification-respond", action),
+
   // Transforms
   syncTransforms: (transforms) => ipcRenderer.invoke("sync-transforms", transforms),
   onTransformActivated: registerListener(

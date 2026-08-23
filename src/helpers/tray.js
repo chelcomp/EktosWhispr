@@ -256,7 +256,9 @@ class TrayManager {
         label: i18nMain.t("tray.quit"),
         click: () => {
           debugLogger.info("Quitting app via tray menu", undefined, "tray");
-          app.quit();
+          // Bypass before-quit async cleanup — exit immediately on user
+          // request. Sidecar shutdown is best-effort (reaper cleans orphans).
+          app.exit(0);
         },
       },
     ];

@@ -50,13 +50,42 @@ test("captureActiveWindow returns null gracefully when the native helper binary 
   setPlatform("win32");
   // _resolveBinary() will not find a binary at the (nonexistent, test-only)
   // search paths — execFile is never even reached in that case.
-  const activeWindowCapture = loadWithMockedExecFile(() => {
-    throw new Error("must never be called when the binary itself is missing");
-  });
+  let execFileCalled = false;
+  const activeWindowCapture = loadWithMockedExecFileAndFs(
+    () => {
+      execFileCalled = true;
+      throw new Error("must never be called when the binary itself is missing");
+    },
+    () => { throw new Error("ENOENT"); }
+  );
   const result = await activeWindowCapture.captureActiveWindow();
   assert.equal(result.png, null);
   assert.equal(result.appIdentifier, null);
+  assert.equal(result.supported, true);
+  assert.equal(execFileCalled, false, "execFile must not be called when binary is missing");
 });
+
+// Loads a fresh copy with both child_process.execFile and fs mocked
+function loadWithMockedExecFileAndFs(execFileImpl, fsStatImpl) {
+  delete require.cache[modulePath];
+  Module._load = function loadWithMocks(request, parent, isMain) {
+    if (request === "child_process") {
+      return { ...originalLoad.call(this, request, parent, isMain), execFile: execFileImpl };
+    }
+    if (request === "fs") {
+      return { ...originalLoad.call(this, request, parent, isMain), statSync: fsStatImpl };
+    }
+    if (request === "electron") {
+      return { app: { getPath: () => os.tmpdir() } };
+    }
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  try {
+    return require("../../src/helpers/activeWindowCapture");
+  } finally {
+    Module._load = originalLoad;
+  }
+}
 
 test("captureActiveWindow returns null gracefully when the helper process errors", async () => {
   setPlatform("win32");

@@ -35,17 +35,39 @@ function createWindowManager() {
     setBounds: (bounds) => {
       wm._applied = bounds;
     },
+    showInactive: () => {
+      wm._shown = true;
+    },
+    show: () => {
+      wm._shown = true;
+    },
   };
   return wm;
 }
 
-test("resizeToDictationBar applies centered bounds, 20% width, 2px above taskbar bottom", () => {
+test("resizeToDictationBar centers horizontally (default), 20% width, 48px height, 2px above taskbar", () => {
   const wm = createWindowManager();
   const result = wm.resizeToDictationBar("bottom");
   assert.equal(result.success, true);
   assert.equal(wm._applied.width, 384);
-  assert.equal(wm._applied.height, 40);
-  assert.equal(wm._applied.y, 1040 - 40 - 2);
+  assert.equal(wm._applied.height, 48);
+  assert.equal(wm._applied.y, 1040 - 48 - 2);
+  assert.equal(wm._applied.x, Math.round((1920 - 384) / 2));
+});
+
+test("resizeToDictationBar centers horizontally when the idle ball is bottom-left", () => {
+  const wm = createWindowManager();
+  wm._panelStartPosition = "bottom-left";
+  const result = wm.resizeToDictationBar("bottom");
+  assert.equal(result.success, true);
+  assert.equal(wm._applied.x, Math.round((1920 - 384) / 2));
+});
+
+test("resizeToDictationBar centers horizontally when the idle ball is centered", () => {
+  const wm = createWindowManager();
+  wm._panelStartPosition = "center";
+  const result = wm.resizeToDictationBar("bottom");
+  assert.equal(result.success, true);
   assert.equal(wm._applied.x, Math.round((1920 - 384) / 2));
 });
 

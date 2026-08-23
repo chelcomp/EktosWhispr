@@ -9,7 +9,6 @@ import {
   Trash2,
   Check,
   SquarePen,
-  Search,
   Sparkles,
   ExternalLink,
   Download,
@@ -91,7 +90,6 @@ function makeContentHash(content: string): string {
 
 interface PersonalNotesViewProps {
   onOpenSettings?: (section: string) => void;
-  onOpenSearch?: () => void;
   meetingRecordingRequest?: {
     noteId: number;
     folderId: number;
@@ -102,7 +100,6 @@ interface PersonalNotesViewProps {
 
 export default function PersonalNotesView({
   onOpenSettings,
-  onOpenSearch,
   meetingRecordingRequest,
   onMeetingRecordingRequestHandled,
 }: PersonalNotesViewProps) {
@@ -616,20 +613,6 @@ export default function PersonalNotesView({
               <SquarePen size={14} className="shrink-0" />
               {t("notes.sidebar.newNote")}
             </button>
-            {onOpenSearch && (
-              <button
-                onClick={onOpenSearch}
-                className={cn(
-                  "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs",
-                  "text-muted-foreground/80 hover:text-foreground hover:bg-foreground/5",
-                  "transition-colors duration-150",
-                  "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/30"
-                )}
-              >
-                <Search size={14} className="shrink-0" />
-                {t("notes.sidebar.searchNotes")}
-              </button>
-            )}
             <button
               onClick={() => setShowActionManager(true)}
               className={cn(

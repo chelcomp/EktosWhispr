@@ -46,14 +46,12 @@ import { syncService } from "../services/SyncService.js";
 
 
 const platform = getCachedPlatform();
-
 const SettingsModal = React.lazy(() => import("./SettingsModal"));
 
 const PersonalNotesView = React.lazy(() => import("./notes/PersonalNotesView"));
 const DictionaryView = React.lazy(() => import("./DictionaryView"));
 const SnippetsView = React.lazy(() => import("./SnippetsView"));
 const UploadAudioView = React.lazy(() => import("./notes/UploadAudioView"));
-const CommandSearch = React.lazy(() => import("./CommandSearch"));
 const TransformsView = React.lazy(() => import("./transforms/TransformsView"));
 
 interface ControlPanelProps {
@@ -73,7 +71,6 @@ export default function ControlPanel({ initialSettingsSection }: ControlPanelPro
   const [aiCTADismissed, setAiCTADismissed] = useState(
     () => localStorage.getItem("aiCTADismissed") === "true"
   );
-  const [showSearch, setShowSearch] = useState(false);
   const showDiscarded = useShowDiscarded();
   const [activeView, setActiveView] = useState<ControlPanelView>("home");
   const isMeetingMode = useIsMeetingMode();
@@ -177,10 +174,7 @@ export default function ControlPanel({ initialSettingsSection }: ControlPanelPro
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const mod = platform === "darwin" ? e.metaKey : e.ctrlKey;
-      if (mod && e.key === "k") {
-        e.preventDefault();
-        setShowSearch(true);
-      } else if (mod && e.key === ",") {
+      if (mod && e.key === ",") {
         e.preventDefault();
         setShowSettings(true);
       }
@@ -188,7 +182,6 @@ export default function ControlPanel({ initialSettingsSection }: ControlPanelPro
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
-
   useEffect(() => {
     if (updateStatus.updateDownloaded && !isDownloading) {
       if (!updateReadyToastShown.current) {
@@ -618,24 +611,6 @@ export default function ControlPanel({ initialSettingsSection }: ControlPanelPro
         </Suspense>
       )}
 
-      {showSearch && (
-        <Suspense fallback={null}>
-          <CommandSearch
-            open={showSearch}
-            onOpenChange={setShowSearch}
-            transcriptions={history}
-            onNoteSelect={(id, folderId) => {
-              if (folderId) setActiveFolderId(folderId);
-              setActiveNoteId(id);
-              setActiveView("personal-notes");
-            }}
-            onTranscriptSelect={() => {
-              setActiveView("home");
-            }}
-          />
-        </Suspense>
-      )}
-
       <div className="flex flex-1 overflow-hidden">
         <div
           className="shrink-0 overflow-hidden transition-[width] duration-300 ease-out"
@@ -644,7 +619,6 @@ export default function ControlPanel({ initialSettingsSection }: ControlPanelPro
           <ControlPanelSidebar
             activeView={activeView}
             onViewChange={setActiveView}
-            onOpenSearch={() => setShowSearch(true)}
             onOpenSettings={() => {
               setSettingsSection(undefined);
               setShowSettings(true);
@@ -770,7 +744,6 @@ export default function ControlPanel({ initialSettingsSection }: ControlPanelPro
                     setSettingsSection(section);
                     setShowSettings(true);
                   }}
-                  onOpenSearch={() => setShowSearch(true)}
                   meetingRecordingRequest={meetingRecordingRequest}
                   onMeetingRecordingRequestHandled={handleMeetingRecordingRequestHandled}
                 />

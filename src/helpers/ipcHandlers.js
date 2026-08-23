@@ -1043,10 +1043,6 @@ class IPCHandlers {
       return { success: true };
     });
 
-    ipcMain.handle("set-notification-interactivity", (event, interactive) => {
-      this.windowManager.setNotificationInteractivity(Boolean(interactive));
-      return { success: true };
-    });
 
     ipcMain.handle("resize-main-window", (event, sizeKey) => {
       return this.windowManager.resizeMainWindow(sizeKey);
@@ -6297,16 +6293,7 @@ class IPCHandlers {
     ipcMain.handle("get-pending-meeting-note-navigation", async () => {
       return this.windowManager?.consumePendingMeetingNoteNavigation() ?? null;
     });
-
-    ipcMain.handle("get-update-notification-data", async () => {
-      return this.windowManager?._pendingUpdateNotificationData ?? null;
-    });
-
-    ipcMain.handle("update-notification-ready", async () => {
-      this.windowManager?.showUpdateNotificationWindow();
-    });
-
-    ipcMain.handle("update-notification-respond", async (_event, action) => {
+    ipcMain.handle("main-overlay-notification-respond", async (_event, action) => {
       this.windowManager?.dismissUpdateNotification();
       if (action === "update") {
         try {
@@ -6316,7 +6303,7 @@ class IPCHandlers {
         }
       }
       return { success: true };
-    });
+    })
 
     // Note files (markdown mirror) handlers
     ipcMain.handle("note-files-set-enabled", async (_event, enabled, customPath, options) => {
