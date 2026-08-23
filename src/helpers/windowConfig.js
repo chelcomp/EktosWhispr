@@ -38,7 +38,7 @@ const WINDOW_SIZES = {
 
 const DICTATION_BAR = {
   WIDTH_RATIO: 0.2, // max 20% of the screen width (user requirement, 2026-08-03)
-  HEIGHT: 40, // 36px pill + 2px breathing room for the CSS shadow
+  HEIGHT: 36, // exact pill height — no breathing room, no visible rectangle
   MARGIN: 2, // gap to the taskbar / top edge
 };
 
@@ -55,16 +55,18 @@ const MAIN_WINDOW_CONFIG = {
   },
   frame: false,
   alwaysOnTop: true,
-  resizable: false,
   transparent: true,
   show: false,
-  skipTaskbar: true,
   focusable: false,
   visibleOnAllWorkspaces: process.platform !== "win32",
   fullScreenable: false,
   hasShadow: false,
   acceptsFirstMouse: true,
   type: MAIN_OVERLAY_TYPE,
+  resizable: false,
+  thickFrame: false,
+  skipTaskbar: true,
+  backgroundColor: "#00000000",
 };
 
 // Resolve the application icon for BrowserWindow (dev and packaged).
@@ -109,28 +111,6 @@ const CONTROL_PANEL_CONFIG = {
   skipTaskbar: false,
   alwaysOnTop: false,
   visibleOnAllWorkspaces: false,
-  type: "normal",
-};
-
-const NOTIFICATION_WINDOW_CONFIG = {
-  width: 392,
-  height: 92,
-  frame: false,
-  transparent: true,
-  alwaysOnTop: true,
-  skipTaskbar: true,
-  resizable: false,
-  focusable: false,
-  hasShadow: false,
-  show: false,
-  webPreferences: {
-    preload: path.join(__dirname, "..", "..", "preload.js"),
-    nodeIntegration: false,
-    contextIsolation: true,
-    sandbox: true,
-  },
-  visibleOnAllWorkspaces: process.platform !== "win32",
-  type: FLOATING_OVERLAY_TYPE,
 };
 
 const TRANSCRIPTION_PREVIEW_SIZE_LIMITS = {
@@ -186,27 +166,26 @@ class WindowPositionUtil {
     return { x, y, width, height };
   }
 
-  static getDictationBarPosition(display, position = "bottom") {
+  static getDictationBarPosition(display, position = "bottom", alignX = "right") {
     const workArea = display.workArea || display.bounds;
     const width = Math.round(workArea.width * DICTATION_BAR.WIDTH_RATIO);
     const height = DICTATION_BAR.HEIGHT;
-    const x = Math.max(
-      workArea.x,
-      Math.round(workArea.x + (workArea.width - width) / 2)
-    );
+    let x;
+    if (alignX === "left") {
+      x = workArea.x + DICTATION_BAR.MARGIN;
+    } else if (alignX === "center") {
+      x = Math.max(
+        workArea.x,
+        Math.round(workArea.x + (workArea.width - width) / 2)
+      );
+    } else {
+      // right (default) — same corner anchor as the idle ball
+      x = Math.max(workArea.x, workArea.x + workArea.width - width - DICTATION_BAR.MARGIN);
+    }
     const y =
       position === "top"
         ? Math.max(0, workArea.y + DICTATION_BAR.MARGIN)
         : Math.max(0, workArea.y + workArea.height - height - DICTATION_BAR.MARGIN);
-    return { x, y, width, height };
-  }
-
-  static getNotificationPosition(display) {
-    const { width, height } = NOTIFICATION_WINDOW_CONFIG;
-    const MARGIN = 16;
-    const workArea = display.workArea || display.bounds;
-    const x = Math.max(0, workArea.x + workArea.width - width - MARGIN);
-    const y = Math.max(0, workArea.y + MARGIN);
     return { x, y, width, height };
   }
 
@@ -314,7 +293,6 @@ module.exports = {
   MAIN_WINDOW_CONFIG,
   CONTROL_PANEL_CONFIG,
   AGENT_OVERLAY_CONFIG,
-  NOTIFICATION_WINDOW_CONFIG,
   TRANSCRIPTION_PREVIEW_CONFIG,
   TRANSCRIPTION_PREVIEW_SIZE_LIMITS,
   WINDOW_SIZES,

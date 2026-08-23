@@ -89,6 +89,80 @@ const Tooltip = ({ children, content, emoji, align = "center" }) => {
   );
 };
 
+// Update overlay component (rendered inside dictation bar window)
+function UpdateOverlay({ data, onRespond, t }) {
+  const [isVisible, setIsVisible] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <div className="w-full h-full flex items-end justify-center p-3 pointer-events-none">
+      <div
+        className={[
+          "relative w-[392px]",
+          "bg-card/95 dark:bg-surface-2/95 backdrop-blur-xl",
+          "border border-border/40 dark:border-border-subtle/40",
+          "rounded-xl shadow-lg p-2.5",
+          "transition-all duration-300 ease-out",
+          isVisible
+            ? "translate-y-0 opacity-100 scale-100"
+            : "translate-y-8 opacity-0 scale-95",
+        ].join(" ")}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        style={{ pointerEvents: "auto" }}
+      >
+        <button
+          onClick={() => onRespond("dismiss")}
+          className={[
+            "absolute -left-2.5 -top-2.5 z-10 size-6 rounded-full",
+            "flex items-center justify-center",
+            "bg-card dark:bg-surface-2 border border-border/40 dark:border-border-subtle/40 shadow-sm",
+            "text-muted-foreground/70 hover:text-foreground hover:bg-muted",
+            "transition-all duration-150",
+            isHovered ? "opacity-100 scale-100" : "opacity-0 scale-75 pointer-events-none",
+          ].join(" ")}
+          aria-label={t("common.dismiss")}
+        >
+          <X className="size-3" />
+        </button>
+
+        <div className="flex items-center gap-2.5">
+          <div className="shrink-0 bg-primary/10 rounded-md p-1">
+            <svg viewBox="0 0 1024 1024" className="w-4.5 h-4.5">
+              <rect width="1024" height="1024" rx="241" fill="#2056DF" />
+              <circle cx="512" cy="512" r="314" fill="#2056DF" stroke="white" strokeWidth="74" />
+              <path d="M512 383V641" stroke="white" strokeWidth="74" strokeLinecap="round" />
+              <path d="M627 457V568" stroke="white" strokeWidth="74" strokeLinecap="round" />
+              <path d="M397 457V568" stroke="white" strokeWidth="74" strokeLinecap="round" />
+            </svg>
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px] font-semibold text-foreground leading-tight truncate">
+              {t("updateNotification.title")}
+            </p>
+            <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">
+              {t("updateNotification.body", { version: data?.version ?? "" })}
+            </p>
+          </div>
+
+          <button
+            onClick={() => onRespond("update")}
+            className="shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 text-[11px] font-medium px-2.5 py-1 rounded-md transition-colors"
+          >
+            {t("updateNotification.cta")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [isHovered, setIsHovered] = useState(false);
   const [isTransforming, setIsTransforming] = useState(false);
@@ -107,7 +181,6 @@ export default function App() {
   const floatingIconAutoHide = useSettingsStore((s) => s.floatingIconAutoHide);
   const panelStartPosition = useSettingsStore((s) => s.panelStartPosition);
   const dictationBarPosition = useSettingsStore((s) => s.dictationBarPosition);
-  const prevAutoHideRef = useRef(floatingIconAutoHide);
 
   const setWindowInteractivity = React.useCallback((shouldCapture) => {
     window.electronAPI?.setMainWindowInteractivity?.(shouldCapture);
@@ -215,6 +288,26 @@ export default function App() {
     return () => unsubscribe?.();
   }, []);
 
+  // Overlay notification state (update, preview, agent)
+  const [overlayNotification, setOverlayNotification] = useState(null);
+
+  // Listen for overlay notifications from main process
+  useEffect(() => {
+    const unsubscribe = window.electronAPI?.onMainWindowOverlayNotification?.((payload) => {
+      if (payload?.type === "clear") {
+        setOverlayNotification(null);
+      } else {
+        setOverlayNotification({ type: payload.type, data: payload.data });
+      }
+    });
+    return () => unsubscribe?.();
+  }, []);
+
+  // Respond to overlay notification (dismiss or update)
+  const handleOverlayNotificationRespond = React.useCallback((action) => {
+    window.electronAPI?.mainOverlayNotificationRespond?.(action);
+    setOverlayNotification(null);
+  }, []);
   // Play the activation cue the instant the hotkey fires — before the
   // copy/clipboard-poll pipeline in transformManager.js runs (which can take ~1s)
   useEffect(() => {
@@ -280,23 +373,6 @@ export default function App() {
     return () => unsubscribe?.();
   }, [cancelRecording]);
 
-  // Auto-hide the floating icon when idle (setting enabled or dictation cycle completed)
-  useEffect(() => {
-    let hideTimeout;
-
-    if (floatingIconAutoHide && !isRecording && !isProcessing && toastCount === 0) {
-      // Delay briefly so processing can start after recording stops without a flash
-      hideTimeout = setTimeout(() => {
-        window.electronAPI?.hideWindow?.();
-      }, 500);
-    } else if (!floatingIconAutoHide && prevAutoHideRef.current) {
-      window.electronAPI?.showDictationPanel?.();
-    }
-
-    prevAutoHideRef.current = floatingIconAutoHide;
-    return () => clearTimeout(hideTimeout);
-  }, [isRecording, isProcessing, floatingIconAutoHide, toastCount]);
-
   const handleClose = () => {
     window.electronAPI.hideWindow();
   };
@@ -355,22 +431,66 @@ export default function App() {
         ? micError.title
         : t("app.dictationBar.error");
   const barActive = barView !== null;
-  // Bar active wins the resize — back to floating-button size otherwise.
-  useEffect(() => {
+  const prevBarActiveRef = useRef(false);
+  // Bar active wins the resize — hide the window when nothing to show.
+  // When the bar transitions from active to inactive, add a brief delay so
+  // the user sees the final state (e.g. error icon) before hiding.
+  useLayoutEffect(() => {
     if (barActive) {
       window.electronAPI?.resizeDictationBar?.(dictationBarPosition);
+      prevBarActiveRef.current = true;
       return;
     }
-    if (isCommandMenuOpen && toastCount > 0) {
-      window.electronAPI?.resizeMainWindow?.("EXPANDED");
-    } else if (isCommandMenuOpen) {
-      window.electronAPI?.resizeMainWindow?.("WITH_MENU");
-    } else if (toastCount > 0) {
-      window.electronAPI?.resizeMainWindow?.("WITH_TOAST");
-    } else {
-      window.electronAPI?.resizeMainWindow?.("BASE");
+    // Bar just became inactive — hide immediately so there's no empty
+    // frame visible. The Delay was meant for error states, but errors
+    // are shown by DictationBar while barActive is still true.
+    if (prevBarActiveRef.current) {
+      prevBarActiveRef.current = false;
+      window.electronAPI?.hideWindow?.();
+      return;
+    }
+    // Already idle: hide if no menu or toast
+    if (!isCommandMenuOpen && toastCount === 0) {
+      window.electronAPI?.hideWindow?.();
     }
   }, [barActive, dictationBarPosition, isCommandMenuOpen, toastCount]);
+
+  // Force EVERY background to transparent on the dictation window
+  // so only the dictation-bar pill (with its own background) is visible.
+  // :has() CSS selectors can flash the solid body background before they match.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const root = document.getElementById("root");
+    html.style.setProperty("background", "transparent", "important");
+    html.style.setProperty("min-height", "0", "important");
+    html.style.setProperty("border", "none", "important");
+    html.style.setProperty("outline", "none", "important");
+    body.style.setProperty("background", "transparent", "important");
+    body.style.setProperty("min-height", "0", "important");
+    body.style.setProperty("overflow", "hidden", "important");
+    body.style.setProperty("border", "none", "important");
+    body.style.setProperty("outline", "none", "important");
+    if (root) {
+      root.style.setProperty("background", "transparent", "important");
+      root.style.setProperty("min-height", "0", "important");
+    }
+    return () => {
+      html.style.removeProperty("background");
+      html.style.removeProperty("min-height");
+      html.style.removeProperty("border");
+      html.style.removeProperty("outline");
+      body.style.removeProperty("background");
+      body.style.removeProperty("min-height");
+      body.style.removeProperty("overflow");
+      body.style.removeProperty("border");
+      body.style.removeProperty("outline");
+      if (root) {
+        root.style.removeProperty("background");
+        root.style.removeProperty("min-height");
+      }
+    };
+  }, []);
 
   const getMicButtonProps = () => {
     const baseClasses =
@@ -421,191 +541,12 @@ export default function App() {
           onAutoHide={clearMicError}
         />
       )}
-      {/* Voice button - position determined by panelStartPosition setting */}
-      {!barActive && (
-      <div
-        className={`fixed bottom-1 z-50 ${
-          panelStartPosition === "bottom-left"
-            ? "left-1"
-            : panelStartPosition === "center"
-              ? "left-1/2 -translate-x-1/2"
-              : "right-1"
-        }`}
-      >
-        <div
-          className="relative flex items-center gap-2"
-          onMouseEnter={() => {
-            setIsHovered(true);
-            setWindowInteractivity(true);
-          }}
-          onMouseLeave={() => {
-            setIsHovered(false);
-            if (!isCommandMenuOpen) {
-              setWindowInteractivity(false);
-            }
-          }}
-        >
-          {(isRecording || isProcessing) && isHovered && (
-            <button
-              aria-label={
-                isRecording ? t("app.buttons.cancelRecording") : t("app.buttons.cancelProcessing")
-              }
-              onClick={(e) => {
-                e.stopPropagation();
-                isRecording ? cancelRecording() : cancelProcessing();
-              }}
-              className="group/cancel w-5 h-5 rounded-full bg-surface-2/90 hover:bg-destructive border border-border hover:border-destructive/70 flex items-center justify-center transition-colors duration-150 shadow-sm backdrop-blur-sm"
-            >
-              <X
-                size={10}
-                strokeWidth={2.5}
-                className="text-foreground group-hover/cancel:text-destructive-foreground transition-colors duration-150"
-              />
-            </button>
-          )}
-          <Tooltip
-            content={micProps.tooltip}
-            align={
-              panelStartPosition === "bottom-left"
-                ? "left"
-                : panelStartPosition === "center"
-                  ? "center"
-                  : "right"
-            }
-          >
-            <button
-              ref={buttonRef}
-              onMouseDown={(e) => {
-                setIsCommandMenuOpen(false);
-                setDragStartPos({ x: e.clientX, y: e.clientY });
-                setHasDragged(false);
-                handleMouseDown(e);
-              }}
-              onMouseMove={(e) => {
-                if (dragStartPos && !hasDragged) {
-                  const distance = Math.sqrt(
-                    Math.pow(e.clientX - dragStartPos.x, 2) +
-                      Math.pow(e.clientY - dragStartPos.y, 2)
-                  );
-                  if (distance > 5) {
-                    // 5px threshold for drag
-                    setHasDragged(true);
-                  }
-                }
-              }}
-              onMouseUp={(e) => {
-                handleMouseUp(e);
-                setDragStartPos(null);
-              }}
-              onClick={(e) => {
-                if (!hasDragged) {
-                  setIsCommandMenuOpen(false);
-                  toggleListening();
-                }
-                e.preventDefault();
-              }}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                if (!hasDragged) {
-                  setWindowInteractivity(true);
-                  setIsCommandMenuOpen((prev) => !prev);
-                }
-              }}
-              onFocus={() => setIsHovered(true)}
-              onBlur={() => setIsHovered(false)}
-              className={micProps.className}
-              style={{
-                ...micProps.style,
-                cursor:
-                  micState === "processing" || micState === "transforming"
-                    ? "not-allowed !important"
-                    : isDragging
-                      ? "grabbing !important"
-                      : "pointer !important",
-                transition:
-                  "transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.25s ease-out",
-              }}
-            >
-              {/* Background effects */}
-              <div
-                className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent transition-opacity duration-150"
-                style={{ opacity: micState === "hover" ? 0.8 : 0 }}
-              ></div>
-              <div
-                className="absolute inset-0 transition-colors duration-150"
-                style={{
-                  backgroundColor: micState === "hover" ? "rgba(0,0,0,0.1)" : "transparent",
-                }}
-              ></div>
-
-              {/* Dynamic content based on state */}
-              {micState === "idle" || micState === "hover" ? (
-                <SoundWaveIcon size={micState === "idle" ? 12 : 14} />
-              ) : micState === "recording" ? (
-                <LoadingDots />
-              ) : micState === "processing" ? (
-                <VoiceWaveIndicator isListening={true} />
-              ) : micState === "transforming" ? (
-                <TransformIcon />
-              ) : null}
-
-              {/* State indicator ring for recording */}
-              {micState === "recording" && (
-                <div className="absolute inset-0 rounded-full border-2 border-primary/50 animate-pulse"></div>
-              )}
-
-              {/* State indicator ring for processing */}
-              {micState === "processing" && (
-                <div className="absolute inset-0 rounded-full border-2 border-primary/30 opacity-50"></div>
-              )}
-
-              {/* Spinning ring for transform */}
-              {micState === "transforming" && (
-                <div
-                  className="absolute inset-0 rounded-full border-2 border-t-white border-r-white/30 border-b-transparent border-l-white/30 animate-spin"
-                  style={{ animationDuration: "0.9s" }}
-                ></div>
-              )}
-            </button>
-          </Tooltip>
-          {isCommandMenuOpen && (
-            <div
-              ref={commandMenuRef}
-              className="absolute bottom-full right-0 mb-3 w-48 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg backdrop-blur-sm"
-              onMouseEnter={() => {
-                setWindowInteractivity(true);
-              }}
-              onMouseLeave={() => {
-                if (!isHovered) {
-                  setWindowInteractivity(false);
-                }
-              }}
-            >
-              <button
-                className="w-full px-3 py-2 text-left text-sm font-medium hover:bg-muted focus:bg-muted focus:outline-none"
-                onClick={() => {
-                  toggleListening();
-                }}
-              >
-                {isRecording
-                  ? t("app.commandMenu.stopListening")
-                  : t("app.commandMenu.startListening")}
-              </button>
-              <div className="h-px bg-border" />
-              <button
-                className="w-full px-3 py-2 text-left text-sm hover:bg-muted focus:bg-muted focus:outline-none"
-                onClick={() => {
-                  setIsCommandMenuOpen(false);
-                  setWindowInteractivity(false);
-                  handleClose();
-                }}
-              >
-                {t("app.commandMenu.hideForNow")}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+      {overlayNotification?.type === "update" && (
+        <UpdateOverlay
+          data={overlayNotification.data}
+          onRespond={handleOverlayNotificationRespond}
+          t={t}
+        />
       )}
     </div>
   );
