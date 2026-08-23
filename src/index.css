@@ -1085,7 +1085,7 @@ body:has(.agent-overlay-window) #root {
   overflow: hidden;
 }
 
-.dictation-bar__eq { display: flex; align-items: center; gap: 2.5px; height: 100%; flex-shrink: 0; }
+.dictation-bar__eq { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-evenly; gap: 0; height: 100%; }
 .dictation-bar__eq .bar {
   width: 3px;
   border-radius: 1.5px;
@@ -1094,7 +1094,6 @@ body:has(.agent-overlay-window) #root {
   transform-origin: bottom;
   animation: eq-bounce 1s ease-in-out infinite;
 }
-.dictation-bar__eq.eq-transcribing { width: 46px; }
 .dictation-bar__eq.eq-transcribing .bar { background: var(--color-muted-foreground); }
 @keyframes eq-bounce {
   0%, 100% { transform: scaleY(0.4); }
