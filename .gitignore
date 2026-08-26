@@ -285,6 +285,7 @@ $RECYCLE.BIN/
 .kilocode/
 .kiro/
 .mcpjam/
+.omp/
 .mux/
 .neovate/
 .opencode/

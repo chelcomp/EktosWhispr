@@ -73,3 +73,33 @@ When a spec lands (`Implemented`):
 - Update the spec file itself to `Status: Implemented`
 
 **No stale docs.** If it's not updated, the iteration isn't done.
+---
+
+## Index.md Requirement (Folder Contents Index)
+
+**Every folder (except `src/` and `test/`) containing `.md` files and/or scripts MUST have an `INDEX.md` file.**
+
+### Requirements
+- **Purpose**: Index of folder contents with summary and instructions on when to use each file
+- **Location**: Always named `INDEX.md` (uppercase, not `index.md`)
+- **Structure**: Table of files with description and usage instructions
+- **Maintenance**: Updated on every NEW file creation or file modification
+- **Chained reference**: Used by `docs/AGENTS.md` as the lookup reference
+
+### Template
+```markdown
+# <Folder Name> Contents Index
+
+| File | Usage |
+|------|-------|
+| `file.md` | Brief description and when to use |
+| `script.js` | Brief description and when to use |
+```
+
+### When to Update
+- Create new `INDEX.md` when folder is created
+- Add entry when new file is added to folder
+- Update description when file's purpose changes
+- Verify index is current before PR review
+
+**No stale indexes.** If it's not updated, the iteration isn't done.
