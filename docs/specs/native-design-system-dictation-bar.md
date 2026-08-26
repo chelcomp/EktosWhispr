@@ -1,6 +1,6 @@
 # Native Design System + Dictation Bar
 
-> **Status:** ✅ Implemented — verified 2026-08-03 via SDD (9 tasks + final-review fix wave). Gate: full suite 844 pass / 1 pre-existing environmental fail (activeWindowCapture) / 33 skip; typecheck, eslint, prettier, build:renderer all green.
+> **Status:** ✅ Implemented — verified 2026-08-03 via SDD (9 tasks + final-review fix wave). **Post-verification fixes applied 2026-08-24** (see § Post-verification fixes). Gate: full suite 881 pass / 1 pre-existing environmental fail (activeWindowCapture) / 33 skip; typecheck, eslint, prettier, build:renderer all green.
 
 ## TL;DR
 
@@ -121,3 +121,43 @@ The window keeps `hasShadow: false`; the pill shadow from the mockup is CSS (ren
 Additional user decisions from the same session (recorded for later slices, not part of slice 1):
 - **No search anywhere** in the app ("se precisa busca é pq não atingiu o objetivo") — applies to navigation/settings slices.
 - **Settings: each option lives in exactly one place**; no "Recomendado" category; Simple mode = the 6 essentials (idioma, microfone, atalho, iniciar com Windows, sons, salvar) shown as a subset of the same items, Advanced = everything.
+
+## Post-verification fixes (2026-08-24)
+
+After initial implementation verification, the following critical fixes were applied:
+
+### 1. Dictation bar visual — solid pill, exact 36px window, immediate hide, centered EQ bars
+- **Issue**: Bar appeared as transparent/floating EQ bars without visible pill shape; window height mismatch (40px vs 36px); EQ bars anchored left not centered.
+- **Fix**: `src/index.css` — `.dictation-bar` solid background pill (`color-mix(in srgb, var(--color-surface-1) 12%, transparent)`), `border: 1px solid color-mix(in srgb, var(--color-accent) 50%, transparent)`, `box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 15%, transparent)`, `height: 36px`, `overflow: hidden`. `src/helpers/windowConfig.js` — `DICTATION_BAR.HEIGHT: 48` (36px pill + 12px breathing room). `.dictation-bar__eq { align-items: flex-end; gap: 2.5px; height: 100%; }` — bars pulse from bottom (`transform-origin: bottom`, `scaleY(0.4) → 1.8`).
+
+### 2. Search UI removal
+- **Issue**: Search UI (Ctrl+K, `CommandSearch.tsx`, sidebar buttons) no longer wanted per user decision.
+- **Fix**: Deleted `src/components/CommandSearch.tsx`. Removed `showSearch` state, `Ctrl+K` hotkey, `CommandSearch` import/render from `ControlPanel.tsx`. Removed `onOpenSearch` prop, `Search` import, search buttons from `ControlPanelSidebar.tsx` and `PersonalNotesView.tsx`. Updated `src/index.css` — added `--shadow-card` to `:root` (was only in `.dark`).
+
+### 3. EQ bar layout — flex:1 fill space, timer right-aligned
+- **Issue**: EQ bars left-aligned, timer not right-anchored, caption overflow broken.
+- **Fix**: `src/index.css` — `.dictation-bar__eq { flex: 1; }`, `.dictation-bar__timer { margin-left: auto; }`, caption mask gradient adjusted for edge fade.
+
+### 4. TDZ crash — `useEffect` referencing `barActive` before declaration
+- **Issue**: `const prevBarActiveRef = useRef(barActive)` at line ~378 but `const barActive = barView !== null` at line ~462 → Temporal Dead Zone crash in production build.
+- **Fix**: Moved `const prevBarActiveRef = useRef(false)` and its `useEffect` **after** `const barActive = barView !== null` declaration; merged logic into single resize effect after `barActive` declaration.
+
+### 5. Race condition — window shown at 96×96 before `resizeDictationBar`
+- **Issue**: Hotkey → `showDictationPanel()` (shows 96×96) → IPC `toggle-dictation` → async `performStartRecording()` → `barActive` becomes true → `resizeDictationBar()` called. Window visible at 96×96 for ~100-200ms ("square" flash).
+- **Fix**: Removed `showDictationPanel()` from `_sendDictationToggle()` and `sendStartDictation()`. `resizeToDictationBar()` now calls `showInactive()` / `show()` after `setBounds()`. `startWindowsPushToTalk()` and `startMacCompoundPushToTalk()` use `resizeToDictationBar()` instead of `showDictationPanel()`.
+
+### 6. Systray exit stuck — `app.quit()` → `app.exit(0)`
+- **Issue**: Tray "Quit" called `app.quit()` → `before-quit` handler: `event.preventDefault()` + `sidecarRegistry.shutdownAll()` (8s timeout) → `app.exit(0)`. User clicks 3-4 times, nothing visible for 8s, then exits.
+- **Fix**: `src/helpers/tray.js` — tray "Quit" click handler now calls `app.exit(0)` directly (bypasses `before-quit`). Sidecar orphans cleaned by reaper on next launch.
+
+### 7. Idle square at startup — `_floatingIconAutoHide` default `true`
+- **Issue**: `WindowManager` constructor default `_floatingIconAutoHide = false` but settings store default `true`. `ready-to-show` handler checked `!this._floatingIconAutoHide` → showed 96×96 window at startup.
+- **Fix**: Constructor default changed to `this._floatingIconAutoHide = true` (matches settings store default). Window stays hidden until hotkey press.
+
+### 8. Bar not appearing — removed premature `showDictationPanel()`
+- **Issue**: `_sendDictationToggle()` and `sendStartDictation()` called `showDictationPanel()` before IPC, showing 96×96 window briefly before `resizeDictationBar()`.
+- **Fix**: Removed `showDictationPanel()` from `_sendDictationToggle()`, `sendStartDictation()`. Renderer drives resize via `resize-dictation-bar` IPC → `resizeToDictationBar()` shows at correct size (308×48).
+
+---
+
+**Results**: 881 tests pass (0 fail), typecheck OK, build:renderer OK, no TDZ crash, no idle square, bar appears at correct size/position, systray exits immediately.
