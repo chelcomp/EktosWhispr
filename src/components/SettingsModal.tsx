@@ -1,13 +1,12 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Sliders,
   Mic,
-  Brain,
+  AudioWaveform,
+  Sparkles,
+  FolderOpen,
   Cpu,
-  Wrench,
-  Keyboard,
-  Shield,
+  Settings2,
 } from "lucide-react";
 import SidebarModal, { type SidebarItem } from "./ui/SidebarModal";
 import SettingsPage, { SettingsSectionType } from "./SettingsPage";
@@ -18,28 +17,37 @@ export type { SettingsSectionType };
 // intelligence, agentMode) — they now collapse into two: speechToText + llms.
 // Legacy deep-links land on the matching sub-tab via LEGACY_SUB_TAB.
 const SECTION_ALIASES: Record<string, SettingsSectionType> = {
-  aiModels: "llms",
-  agentConfig: "llms",
-  agentMode: "llms",
-  intelligence: "llms",
-  meetings: "llms",
-  prompts: "llms",
-  transcription: "speechToText",
-  uploadTranscription: "speechToText",
+  // Map old 7 sections to new 6 sections
+  general: "input",
+  hotkeys: "input",
+  speechToText: "transcription",
+  llms: "aiProcessing",
+  localModel: "models",
+  privacyData: "storage",
+  // Legacy deep-links
+  aiModels: "aiProcessing",
+  agentConfig: "aiProcessing",
+  agentMode: "aiProcessing",
+  intelligence: "aiProcessing",
+  meetings: "transcription",
+  prompts: "aiProcessing",
+  transcription: "transcription",
+  uploadTranscription: "transcription",
   softwareUpdates: "system",
-  privacy: "privacyData",
-  permissions: "privacyData",
+  privacy: "storage",
+  permissions: "storage",
   developer: "system",
 };
 
 const LEGACY_SUB_TAB: Record<string, string> = {
+  // New 6-section sub-tabs
+  input: "microphone",
   transcription: "dictation",
   uploadTranscription: "upload",
-  meetings: "noteFormatting",
+  aiProcessing: "dictationCleanup",
+  agentMode: "dictationAgent",
+  agentConfig: "dictationAgent",
   intelligence: "dictationCleanup",
-  agentMode: "chatIntelligence",
-  agentConfig: "chatIntelligence",
-  aiModels: "dictationCleanup",
   prompts: "dictationCleanup",
 };
 
@@ -54,63 +62,44 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
   const sidebarItems: SidebarItem<SettingsSectionType>[] = useMemo(
     () => [
       {
-        id: "general",
-        label: t("settingsModal.sections.general.label"),
-        icon: Sliders,
-        description: t("settingsModal.sections.general.description"),
-        group: t("settingsModal.groups.app"),
-        subItems: [
-          { id: "appearance", label: t("settingsPage.general.appearance.title"), anchor: "general-appearance" },
-          { id: "sound-effects", label: t("settingsPage.general.soundEffects.title"), anchor: "general-sound-effects" },
-          { id: "notifications", label: t("settingsPage.general.notifications.title"), anchor: "general-notifications" },
-          { id: "clipboard", label: t("settingsPage.general.clipboard.title"), anchor: "general-clipboard" },
-          { id: "save-files", label: t("settings.noteFiles.title"), anchor: "general-save-files" },
-          { id: "floating-icon", label: t("settingsPage.general.floatingIcon.title"), anchor: "general-floating-icon" },
-          { id: "language", label: t("settings.language.sectionTitle"), anchor: "general-language" },
-          { id: "startup", label: t("settingsPage.general.startup.title"), anchor: "general-startup" },
-          { id: "microphone", label: t("settingsPage.general.microphone.title"), anchor: "general-microphone" },
-          { id: "auto-learn", label: t("settingsPage.dictionary.autoLearnTitle", { defaultValue: "Auto-learn" }), anchor: "general-auto-learn" },
-        ],
-      },
-      {
-        id: "hotkeys",
-        label: t("settingsModal.sections.hotkeys.label"),
-        icon: Keyboard,
-        description: t("settingsModal.sections.hotkeys.description"),
-        group: t("settingsModal.groups.app"),
-      },
-      {
-        id: "speechToText",
-        label: t("settingsModal.sections.speechToText.label"),
+        id: "input",
+        label: t("settingsModal.sections.input.label"),
         icon: Mic,
-        description: t("settingsModal.sections.speechToText.description"),
-        group: t("settingsModal.groups.aiModels"),
+        description: t("settingsModal.sections.input.description"),
+        group: t("settingsModal.groups.input"),
       },
       {
-        id: "llms",
-        label: t("settingsModal.sections.llms.label"),
-        icon: Brain,
-        description: t("settingsModal.sections.llms.description"),
-        group: t("settingsModal.groups.aiModels"),
+        id: "transcription",
+        label: t("settingsModal.sections.transcription.label"),
+        icon: AudioWaveform,
+        description: t("settingsModal.sections.transcription.description"),
+        group: t("settingsModal.groups.transcription"),
       },
       {
-        id: "localModel",
-        label: t("settingsModal.sections.localModel.label"),
+        id: "aiProcessing",
+        label: t("settingsModal.sections.aiProcessing.label"),
+        icon: Sparkles,
+        description: t("settingsModal.sections.aiProcessing.description"),
+        group: t("settingsModal.groups.aiProcessing"),
+      },
+      {
+        id: "storage",
+        label: t("settingsModal.sections.storage.label"),
+        icon: FolderOpen,
+        description: t("settingsModal.sections.storage.description"),
+        group: t("settingsModal.groups.storage"),
+      },
+      {
+        id: "models",
+        label: t("settingsModal.sections.models.label"),
         icon: Cpu,
-        description: t("settingsModal.sections.localModel.description"),
-        group: t("settingsModal.groups.aiModels"),
-      },
-      {
-        id: "privacyData",
-        label: t("settingsModal.sections.privacyData.label"),
-        icon: Shield,
-        description: t("settingsModal.sections.privacyData.description"),
-        group: t("settingsModal.groups.system"),
+        description: t("settingsModal.sections.models.description"),
+        group: t("settingsModal.groups.models"),
       },
       {
         id: "system",
         label: t("settingsModal.sections.system.label"),
-        icon: Wrench,
+        icon: Settings2,
         description: t("settingsModal.sections.system.description"),
         group: t("settingsModal.groups.system"),
       },
@@ -119,9 +108,9 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
   );
 
   const resolveSection = (section: string | undefined): SettingsSectionType => {
-    if (!section) return "general";
+    if (!section) return "input";
     const resolved = (SECTION_ALIASES[section] ?? section) as SettingsSectionType;
-    if (!["general", "hotkeys", "speechToText", "llms", "localModel", "privacyData", "system"].includes(resolved)) return "general";
+    if (!["input", "transcription", "aiProcessing", "storage", "models", "system"].includes(resolved)) return "input";
     return resolved;
   };
 
