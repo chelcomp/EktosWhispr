@@ -1074,7 +1074,12 @@
       "account": "Conta",
       "app": "Aplicativo",
       "aiModels": "Modelos de IA",
-      "system": "Sistema"
+      "system": "Sistema",
+      "input": "Entrada",
+      "transcription": "Transcrição",
+      "aiProcessing": "Processamento de IA",
+      "storage": "Armazenamento",
+      "models": "Modelos"
     },
     "sections": {
       "account": {
@@ -1110,12 +1115,32 @@
         "label": "Privacidade e dados"
       },
       "system": {
-        "description": "Atualizações, armazenamento e ferramentas de desenvolvimento",
-        "label": "Sistema"
+        "label": "Sistema & Conta",
+        "description": "Conta, aparência, comportamento, permissões, avançado"
       },
       "workspace": {
-        "label": "Espacio de trabajo",
-        "description": "Miembros, equipos, facturación y claves API"
+        "label": "Espaço de trabalho",
+        "description": "Membros, equipes, cobrança e chaves de API"
+      },
+      "input": {
+        "label": "Entrada & Atalhos",
+        "description": "Microfone, detecção de atividade de voz e atalhos"
+      },
+      "transcription": {
+        "label": "Transcrição",
+        "description": "Motor de fala-para-texto, modelos e idioma"
+      },
+      "aiProcessing": {
+        "label": "IA & Processamento",
+        "description": "Limpeza de texto, agente de voz, chat e prompts"
+      },
+      "storage": {
+        "label": "Armazenamento & Dados",
+        "description": "Retenção, dicionário, contexto de tela e vocabulário dinâmico"
+      },
+      "models": {
+        "label": "Modelos & Downloads",
+        "description": "Gerenciamento de modelos locais Whisper, Parakeet e LLM"
       }
     },
     "title": "Configurações"
@@ -1809,6 +1834,18 @@
       "customSetup": "Configuração personalizada",
       "customSetupDescription": "Use seu próprio provedor e chave API.",
       "description": "Escolha como o EktosWhispr transcreve sua voz",
+      "engine": {
+        "title": "Motor",
+        "description": "Selecione o motor e provedor de fala-para-texto"
+      },
+      "language": {
+        "title": "Idioma",
+        "description": "Configure idiomas de transcrição e interface"
+      },
+      "uploadMeetings": {
+        "title": "Upload e Reuniões",
+        "description": "Configurações de envio de áudio e transcrição de reuniões"
+      },
       "modes": {
         "ektoswhispr": "EktosWhispr Cloud",
         "providers": "Provedores na nuvem",
@@ -1971,89 +2008,230 @@
       "apiKeyOptional": "API Key (opcional)"
     },
     "workspace": {
-      "title": "Espacio de trabajo",
-      "description": "Colabora con compañeros, comparte notas y administra la facturación en un solo lugar.",
+      "title": "Espaço de trabalho",
+      "description": "Colabore com colegas de equipe, compartilhe notas e gerencie a cobrança em um único lugar.",
       "empty": {
-        "title": "Crea tu primer espacio de trabajo",
-        "description": "Los espacios de trabajo te permiten colaborar con compañeros y compartir notas.",
-        "create": "Crear espacio de trabajo"
+        "title": "Crie seu primeiro espaço de trabalho",
+        "description": "Espaços de trabalho permitem que você colabore com colegas de equipe e compartilhe notas.",
+        "create": "Criar espaço de trabalho"
       },
       "tab": {
-        "general": "General",
-        "members": "Miembros",
-        "teams": "Equipos",
-        "billing": "Facturación",
-        "developer": "Desarrollador"
+        "general": "Geral",
+        "members": "Membros",
+        "teams": "Equipes",
+        "billing": "Cobrança",
+        "developer": "Desenvolvedor"
       },
       "role": {
-        "owner": "Propietario",
+        "owner": "Proprietário",
         "admin": "Administrador",
-        "member": "Miembro"
+        "member": "Membro"
       },
       "general": {
-        "nameLabel": "Nombre del espacio de trabajo",
+        "nameLabel": "Nome do espaço de trabalho",
         "slugLabel": "Slug",
-        "slugHint": "Se usa en URLs y enlaces de invitación. Solo letras minúsculas, dígitos y guiones.",
-        "saved": "Espacio de trabajo actualizado",
-        "dangerTitle": "Eliminar espacio de trabajo",
-        "dangerDescription": "Todas las notas, carpetas e integraciones compartidas se eliminarán. Esto no se puede deshacer.",
-        "delete": "Eliminar espacio de trabajo",
-        "confirmTitle": "¿Eliminar {{name}}?",
-        "confirmDescription": "Esto cancela la suscripción y elimina todos los datos del espacio de trabajo permanentemente."
+        "slugHint": "Usado em URLs e links de convite. Apenas letras minúsculas, dígitos e hífens.",
+        "saved": "Espaço de trabalho atualizado",
+        "dangerTitle": "Excluir espaço de trabalho",
+        "dangerDescription": "Todas as notas compartilhadas, pastas e integrações serão excluídas. Isso não pode ser desfeito.",
+        "delete": "Excluir espaço de trabalho",
+        "confirmTitle": "Excluir {{name}}?",
+        "confirmDescription": "Isso cancela a assinatura e remove todos os dados do espaço de trabalho permanentemente."
       },
       "members": {
-        "title": "Miembros",
-        "description": "{{count}} de {{seats}} asientos utilizados.",
-        "invite": "Invitar",
-        "empty": "Aún no hay miembros.",
-        "roleUpdated": "Rol actualizado",
-        "promote": "Hacer administrador",
-        "demote": "Hacer miembro",
-        "transferOwnership": "Transferir propiedad",
-        "remove": "Quitar del espacio de trabajo"
+        "title": "Membros",
+        "description": "{{count}} de {{seats}} assentos usados.",
+        "invite": "Convidar",
+        "empty": "Sem membros ainda.",
+        "roleUpdated": "Função atualizada",
+        "promote": "Tornar administrador",
+        "demote": "Tornar membro",
+        "transferOwnership": "Transferir propriedade",
+        "remove": "Remover do espaço de trabalho"
       },
       "invites": {
-        "title": "Invitaciones pendientes",
+        "title": "Convites pendentes",
         "resend": "Reenviar",
-        "revoke": "Revocar",
-        "resent": "Invitación reenviada"
+        "revoke": "Revogar",
+        "resent": "Convite reenviado"
       },
       "teams": {
-        "title": "Equipos",
-        "description": "Agrupa miembros para compartir con alcance limitado.",
-        "new": "Nuevo equipo",
-        "empty": "Aún no hay equipos.",
-        "createFirst": "Crea tu primer equipo",
-        "createTitle": "Crear equipo",
-        "nameLabel": "Nombre del equipo",
-        "descriptionLabel": "Descripción",
-        "memberCount": "{{count}} miembros"
+        "title": "Equipes",
+        "description": "Agrupar membros para compartilhamento com escopo.",
+        "new": "Nova equipe",
+        "empty": "Sem equipes ainda.",
+        "createFirst": "Crie sua primeira equipe",
+        "createTitle": "Criar equipe",
+        "nameLabel": "Nome da equipe",
+        "descriptionLabel": "Descrição",
+        "memberCount": "{{count}} membros"
       },
       "billing": {
-        "title": "Facturación",
-        "description": "Plan, asientos y pago.",
-        "plan": "Plan",
-        "seats": "Asientos",
-        "nextInvoice": "Próxima factura",
-        "manageStripe": "Administrar en Stripe",
-        "startSubscription": "Iniciar suscripción"
+        "title": "Cobrança",
+        "description": "Plano, assentos e pagamento.",
+        "plan": "Plano",
+        "seats": "Assentos",
+        "nextInvoice": "Próxima fatura",
+        "manageStripe": "Gerenciar no Stripe",
+        "startSubscription": "Iniciar assinatura"
       },
       "developer": {
-        "title": "Claves API",
-        "description": "Acceso programático limitado a este espacio de trabajo.",
-        "empty": "Aún no hay claves API. Crea una para integrarte con este espacio de trabajo.",
-        "new": "Nueva clave",
-        "create": "Crear clave",
-        "createTitle": "Crear clave API",
-        "createDescription": "Elige los permisos que necesita esta clave. Puedes revocarla en cualquier momento.",
-        "nameLabel": "Nombre de la clave",
-        "namePlaceholder": "Integración de producción",
-        "revoke": "Revocar clave",
+        "title": "Chaves API",
+        "description": "Acesso programático limitado a este espaço de trabalho.",
+        "empty": "Sem chaves API ainda. Crie uma para integrar com este espaço de trabalho.",
+        "new": "Nova chave",
+        "create": "Criar chave",
+        "createTitle": "Criar chave API",
+        "createDescription": "Escolha as permissões que esta chave precisa. Você pode revogá-la a qualquer momento.",
+        "nameLabel": "Nome da chave",
+        "namePlaceholder": "Integração de produção",
+        "revoke": "Revogar chave",
         "lastUsed": "Último uso {{date}}",
-        "neverUsed": "Nunca utilizada",
-        "keyCreatedTitle": "Clave API creada",
-        "keyCreatedDescription": "Copia esta clave ahora — no podrás verla de nuevo."
+        "neverUsed": "Nunca usada",
+        "keyCreatedTitle": "Chave API criada",
+        "keyCreatedDescription": "Copie esta chave agora — você não poderá vê-la novamente."
       }
+    },
+    "input": {
+      "title": "Entrada & Atalhos",
+      "description": "Configure microfone, detecção de atividade de voz e atalhos de teclado",
+      "microphone": {
+        "title": "Microfone",
+        "description": "Selecione o dispositivo de entrada e ajuste as configurações do microfone"
+      },
+      "vad": {
+        "title": "Detecção de Atividade de Voz",
+        "description": "Configure como o app detecta fala vs. silêncio",
+        "previewVadTitle": "VAD de Visualização Ao Vivo",
+        "previewVadDescription": "Detector rápido e leve para a visualização de transcrição ao vivo"
+      },
+      "hotkeys": {
+        "title": "Atalhos",
+        "description": "Atalhos de teclado para ditado, agente de voz e reuniões"
+      }
+    },
+    "aiProcessing": {
+      "title": "IA & Processamento",
+      "description": "Limpeza de texto, agente de voz, agente de chat, formatação de notas e transforms",
+      "cleanup": {
+        "title": "Limpeza do Ditado",
+        "description": "Ative e configure a limpeza de texto por IA para ditado"
+      },
+      "voiceAgent": {
+        "title": "Agente de Voz",
+        "description": "Configure o agente de IA ativado por voz"
+      },
+      "chatAgent": {
+        "title": "Agente de Chat",
+        "description": "Configure o agente de IA baseado em chat"
+      },
+      "noteFormatting": {
+        "title": "Formatação de Notas",
+        "description": "Formatação e estrutura de notas com IA"
+      },
+      "transforms": {
+        "title": "Transforms",
+        "description": "Gerencie e configure transforms de texto"
+      }
+    },
+    "storage": {
+      "title": "Armazenamento & Dados",
+      "description": "Gerencie retenção de dados, dicionário personalizado, snippets e armazenamento de contexto de tela",
+      "retention": {
+        "audioTitle": "Retenção de Áudio",
+        "audioDescription": "Por quanto tempo manter gravações de áudio antes da exclusão automática",
+        "audioStorageUsage": "Uso de Armazenamento de Áudio",
+        "meetingAudioTitle": "Armazenamento de Áudio de Reunião",
+        "meetingAudioDescription": "Áudio de reunião nunca é excluído automaticamente — limpe manualmente",
+        "meetingAudioUsage": "Uso de Áudio de Reunião"
+      },
+      "screenContext": {
+        "title": "Contexto de Tela",
+        "description": "Configure captura de texto da janela ativa para contexto de IA",
+        "storageTitle": "Capturas de Tela do Contexto de Tela",
+        "storageDescription": "Gerencie capturas de tela persistidas da captura de contexto de tela",
+        "retentionTitle": "Retenção de Capturas",
+        "retentionDescription": "Por quanto tempo manter capturas antes da exclusão automática",
+        "storageUsage": "Uso de Armazenamento de Capturas"
+      },
+      "dictionary": {
+        "title": "Dicionário Personalizado",
+        "description": "Palavras e frases para melhorar a precisão da transcrição"
+      },
+      "dynamicVocabulary": {
+        "title": "Vocabulário Dinâmico",
+        "description": "Aprenda automaticamente vocabulário de transcrições recentes"
+      },
+      "snippets": {
+        "title": "Snippets",
+        "description": "Gerencie snippets de texto reutilizáveis para inserção rápida"
+      }
+    },
+    "models": {
+      "title": "Modelos & Downloads",
+      "description": "Gerencie modelos de transcrição e IA baixados localmente",
+      "stt": {
+        "title": "Modelos de Fala-para-Texto",
+        "description": "Modelos Whisper e Parakeet para transcrição local"
+      },
+      "llm": {
+        "title": "Modelos de Linguagem",
+        "description": "Modelos de IA locais para limpeza de texto, agente e formatação"
+      },
+      "binaries": {
+        "title": "Status dos Binários",
+        "description": "Status dos binários de transcrição e FFmpeg"
+      }
+    },
+    "system": {
+      "title": "Sistema & Conta",
+      "description": "Conta, aparência, comportamento, permissões e configurações avançadas",
+      "account": {
+        "title": "Conta",
+        "description": "Gerencie sua conta e assinatura do EktosWhispr"
+      },
+      "appearance": {
+        "title": "Aparência",
+        "description": "Tema e posicionamento do painel",
+        "dictationBarPosition": "Posição da Barra de Ditado",
+        "dictationBarPositionDescription": "Onde a barra de ditado aparece na tela",
+        "panelStartPosition": "Posição Inicial do Painel",
+        "panelStartPositionDescription": "Onde o painel de controle aparece ao iniciar",
+        "top": "Topo",
+        "bottom": "Base"
+      },
+      "behavior": {
+        "title": "Comportamento",
+        "description": "Comportamento geral do app e configurações da área de transferência",
+        "pauseMedia": "Pausar Mídia no Ditado",
+        "pauseMediaDescription": "Pause automaticamente a música quando o ditado inicia",
+        "floatingIconAutoHide": "Ocultar Ícone Flutuante Automaticamente",
+        "floatingIconAutoHideDescription": "Mantenha o ícone oculto até iniciar o ditado",
+        "autoPaste": "Colagem Automática",
+        "autoPasteDescription": "Cole automaticamente o texto transcrito quando o ditado termina",
+        "autoUnmuteMic": "Desmutar Microfone Automaticamente",
+        "autoUnmuteMicDescription": "Desmute automaticamente o microfone quando o ditado inicia"
+      },
+      "permissions": {
+        "title": "Permissões",
+        "description": "Permissões do sistema para microfone, acessibilidade e captura de áudio"
+      },
+      "advanced": {
+        "title": "Avançado",
+        "description": "Ferramentas de desenvolvedor, gerenciamento de dados e reset do app"
+      },
+      "about": {
+        "title": "Sobre",
+        "description": "Info de versão, licença e links"
+      }
+    },
+    "sidebar": {
+      "input": "Entrada & Atalhos",
+      "transcription": "Transcrição",
+      "aiProcessing": "IA & Processamento",
+      "storage": "Armazenamento & Dados",
+      "models": "Modelos & Downloads",
+      "system": "Sistema & Conta"
     }
   },
   "models": {

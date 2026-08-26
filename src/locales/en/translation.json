@@ -1183,7 +1183,12 @@
       "account": "Account",
       "app": "App",
       "aiModels": "AI Models",
-      "system": "System"
+      "system": "System",
+      "input": "Input",
+      "transcription": "Transcription",
+      "aiProcessing": "AI Processing",
+      "storage": "Storage",
+      "models": "Models"
     },
     "sections": {
       "account": {
@@ -1223,8 +1228,28 @@
         "label": "Privacy & Data"
       },
       "system": {
-        "description": "Updates, storage & developer tools",
-        "label": "System"
+        "label": "System & Account",
+        "description": "Account, appearance, behavior, permissions, advanced"
+      },
+      "input": {
+        "label": "Input & Shortcuts",
+        "description": "Microphone, voice activity detection, and hotkeys"
+      },
+      "transcription": {
+        "label": "Transcription",
+        "description": "Speech-to-text engine, models, and language"
+      },
+      "aiProcessing": {
+        "label": "AI & Processing",
+        "description": "Text cleanup, voice agent, chat, and prompts"
+      },
+      "storage": {
+        "label": "Storage & Data",
+        "description": "Retention, dictionary, screen context, and dynamic vocabulary"
+      },
+      "models": {
+        "label": "Models & Downloads",
+        "description": "Local Whisper, Parakeet, and LLM model management"
       }
     },
     "title": "Settings"
@@ -2003,6 +2028,18 @@
       "customSetup": "Custom Setup",
       "customSetupDescription": "Use your own provider and API key.",
       "description": "Choose how EktosWhispr transcribes your voice",
+      "engine": {
+        "title": "Engine",
+        "description": "Select speech-to-text engine and provider"
+      },
+      "language": {
+        "title": "Language",
+        "description": "Configure transcription and UI languages"
+      },
+      "uploadMeetings": {
+        "title": "Upload & Meetings",
+        "description": "Audio upload and meeting transcription settings"
+      },
       "modes": {
         "ektoswhispr": "EktosWhispr Cloud",
         "providers": "Cloud Providers",
@@ -2163,6 +2200,147 @@
       "endpointUrl": "Endpoint URL",
       "serverUrl": "Server URL",
       "apiKeyOptional": "API Key (optional)"
+    },
+    "input": {
+      "title": "Input & Shortcuts",
+      "description": "Configure microphone, voice activity detection, and keyboard shortcuts",
+      "microphone": {
+        "title": "Microphone",
+        "description": "Select input device and adjust microphone settings"
+      },
+      "vad": {
+        "title": "Voice Activity Detection",
+        "description": "Configure how the app detects speech vs. silence",
+        "previewVadTitle": "Live Preview VAD",
+        "previewVadDescription": "Fast, lightweight detector for the live transcription preview"
+      },
+      "hotkeys": {
+        "title": "Hotkeys",
+        "description": "Keyboard shortcuts for dictation, voice agent, and meetings"
+      }
+    },
+    "aiProcessing": {
+      "title": "AI & Processing",
+      "description": "Text cleanup, voice agent, chat agent, note formatting, and transforms",
+      "cleanup": {
+        "title": "Dictation Cleanup",
+        "description": "Enable and configure AI-powered text cleanup for dictation"
+      },
+      "voiceAgent": {
+        "title": "Voice Agent",
+        "description": "Configure the voice-activated AI agent"
+      },
+      "chatAgent": {
+        "title": "Chat Agent",
+        "description": "Configure the chat-based AI agent"
+      },
+      "noteFormatting": {
+        "title": "Note Formatting",
+        "description": "AI-powered note formatting and structure"
+      },
+      "transforms": {
+        "title": "Transforms",
+        "description": "Manage and configure text transforms"
+      }
+    },
+    "storage": {
+      "title": "Storage & Data",
+      "description": "Manage data retention, custom dictionary, snippets, and screen context storage",
+      "retention": {
+        "audioTitle": "Audio Retention",
+        "audioDescription": "How long to keep audio recordings before automatic deletion",
+        "audioStorageUsage": "Audio Storage Usage",
+        "meetingAudioTitle": "Meeting Audio Storage",
+        "meetingAudioDescription": "Meeting audio is never auto-deleted — clear manually",
+        "meetingAudioUsage": "Meeting Audio Usage"
+      },
+      "screenContext": {
+        "title": "Screen Context",
+        "description": "Configure active window text capture for AI context",
+        "storageTitle": "Screen Context Screenshots",
+        "storageDescription": "Manage persisted screenshots from screen context capture",
+        "retentionTitle": "Screenshot Retention",
+        "retentionDescription": "How long to keep screenshots before automatic deletion",
+        "storageUsage": "Screenshot Storage Usage"
+      },
+      "dictionary": {
+        "title": "Custom Dictionary",
+        "description": "Words and phrases to improve transcription accuracy"
+      },
+      "dynamicVocabulary": {
+        "title": "Dynamic Vocabulary",
+        "description": "Automatically learn vocabulary from recent transcriptions"
+      },
+      "snippets": {
+        "title": "Snippets",
+        "description": "Manage reusable text snippets for quick insertion"
+      }
+    },
+    "models": {
+      "title": "Models & Downloads",
+      "description": "Manage locally downloaded transcription and AI models",
+      "stt": {
+        "title": "Speech-to-Text Models",
+        "description": "Whisper and Parakeet models for local transcription"
+      },
+      "llm": {
+        "title": "Language Models",
+        "description": "Local AI models for text cleanup, agent, and formatting"
+      },
+      "binaries": {
+        "title": "Binary Status",
+        "description": "Status of transcription binaries and FFmpeg"
+      }
+    },
+    "system": {
+      "title": "System & Account",
+      "description": "Account, appearance, behavior, permissions, and advanced settings",
+      "account": {
+        "title": "Account",
+        "description": "Manage your EktosWhispr account and subscription"
+      },
+      "appearance": {
+        "title": "Appearance",
+        "description": "Theme and panel positioning",
+        "dictationBarPosition": "Dictation Bar Position",
+        "dictationBarPositionDescription": "Where the dictation bar appears on screen",
+        "panelStartPosition": "Panel Start Position",
+        "panelStartPositionDescription": "Where the control panel appears on launch",
+        "top": "Top",
+        "bottom": "Bottom"
+      },
+      "behavior": {
+        "title": "Behavior",
+        "description": "General app behavior and clipboard settings",
+        "pauseMedia": "Pause Media on Dictation",
+        "pauseMediaDescription": "Automatically pause music when dictation starts",
+        "floatingIconAutoHide": "Auto-hide Floating Icon",
+        "floatingIconAutoHideDescription": "Keep the icon hidden until you start dictating",
+        "autoPaste": "Automatic Pasting",
+        "autoPasteDescription": "Automatically paste transcribed text when dictation finishes",
+        "autoUnmuteMic": "Auto-unmute Microphone",
+        "autoUnmuteMicDescription": "Automatically unmute microphone when dictation starts"
+      },
+      "permissions": {
+        "title": "Permissions",
+        "description": "System permissions for microphone, accessibility, and audio capture"
+      },
+      "advanced": {
+        "title": "Advanced",
+        "description": "Developer tools, data management, and app reset"
+      },
+      "about": {
+        "title": "About",
+        "description": "Version info, license, and links"
+      }
+    },
+    "sidebar": {
+      "input": "Input & Shortcuts",
+      "transcription": "Transcription",
+      "aiProcessing": "AI & Processing",
+      "storage": "Storage & Data",
+      "models": "Models & Downloads",
+      "system": "System & Account"
     }
   },
   "models": {
