@@ -22,11 +22,11 @@ function loadWindowConfig() {
 
 const fullHd = { workArea: { x: 0, y: 0, width: 1920, height: 1040 } };
 
-test("getDictationBarPosition anchors right by default (same side as the idle ball), width = 20% of workArea, height 48", () => {
+test("getDictationBarPosition anchors right by default (same side as the idle ball), width = 20% of workArea, height 36", () => {
   const { WindowPositionUtil } = loadWindowConfig();
   const pos = WindowPositionUtil.getDictationBarPosition(fullHd, "bottom");
   assert.equal(pos.width, 384); // round(1920 * 0.2)
-  assert.equal(pos.height, 48);
+  assert.equal(pos.height, 36);
   assert.equal(pos.x, 1920 - 384 - 2);
 });
 
@@ -42,7 +42,7 @@ test("getDictationBarPosition honors alignX left/center anchors", () => {
 test("getDictationBarPosition bottom sits 2px above the workArea bottom edge", () => {
   const { WindowPositionUtil } = loadWindowConfig();
   const pos = WindowPositionUtil.getDictationBarPosition(fullHd, "bottom");
-  assert.equal(pos.y, 1040 - 48 - 2);
+  assert.equal(pos.y, 1040 - 36 - 2);
 });
 
 test("getDictationBarPosition top sits 2px below the workArea top edge, right-anchored (respects multi-monitor origin)", () => {
@@ -66,7 +66,7 @@ test("getDictationBarPosition falls back to display.bounds when workArea is miss
   const { WindowPositionUtil } = loadWindowConfig();
   const display = { bounds: { x: 0, y: 0, width: 1000, height: 800 } };
   const pos = WindowPositionUtil.getDictationBarPosition(display, "bottom");
-  assert.equal(pos.y, 800 - 48 - 2);
+  assert.equal(pos.y, 800 - 36 - 2);
 });
 
 const originalPlatform = process.platform;

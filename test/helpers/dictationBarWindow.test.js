@@ -45,13 +45,13 @@ function createWindowManager() {
   return wm;
 }
 
-test("resizeToDictationBar centers horizontally (default), 20% width, 48px height, 2px above taskbar", () => {
+test("resizeToDictationBar centers horizontally (default), 20% width, 36px height, 2px above taskbar", () => {
   const wm = createWindowManager();
   const result = wm.resizeToDictationBar("bottom");
   assert.equal(result.success, true);
   assert.equal(wm._applied.width, 384);
-  assert.equal(wm._applied.height, 48);
-  assert.equal(wm._applied.y, 1040 - 48 - 2);
+  assert.equal(wm._applied.height, 36);
+  assert.equal(wm._applied.y, 1040 - 36 - 2);
   assert.equal(wm._applied.x, Math.round((1920 - 384) / 2));
 });
 

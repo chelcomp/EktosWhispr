@@ -15,7 +15,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { render, screen, cleanup, waitFor } = require("@testing-library/react");
 const React = require("react");
-const { ScreenContextSettingsSection } = require("../../src/components/SettingsPage.tsx");
+const { ScreenContextSettingsSection } = require("../../src/components/settings/sections/TranscriptionSection.tsx");
 const { useSettingsStore } = require("../../src/stores/settingsStore.ts");
 
 function makeElectronApiStub({ supported = true } = {}) {

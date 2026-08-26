@@ -20,7 +20,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { render, screen, cleanup, fireEvent } = require("@testing-library/react");
 const React = require("react");
-const { DictationVadTabs } = require("../../src/components/SettingsPage.tsx");
+const { DictationVadTabs } = require("../../src/components/settings/sections/TranscriptionSection.tsx");
 
 const LIVE_STUB_TEXT = "LIVE_STUB_CONTENT";
 const SILERO_STUB_TEXT = "SILERO_STUB_CONTENT";
