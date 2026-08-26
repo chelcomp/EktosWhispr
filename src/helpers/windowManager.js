@@ -21,6 +21,9 @@ const {
 
 const TRANSCRIPTION_PREVIEW_READY_TIMEOUT_MS = 3000;
 
+// Push-to-talk stuck-session safety net (mirrors linuxKeyManager WATCHDOG_MS).
+const WINDOWS_PUSH_WATCHDOG_MS = 30000;
+
 class WindowManager {
   constructor() {
     this.mainWindow = null;
@@ -494,7 +497,15 @@ class WindowManager {
 
   startWindowsPushToTalk(key) {
     if (this.winPushState?.active) {
-      return;
+      if (this.winPushState.key !== key) {
+        return;
+      }
+      // Same key pressed again while still marked held means the KEY_UP was
+      // lost (listener crash, secure desktop, missed release). Close the
+      // stale session — stopping recording if it had started — so this press
+      // opens a fresh one instead of being silently swallowed.
+      debugLogger.warn("[Push-to-Talk] Lost KEY_UP for held key; resetting stale push session", { key });
+      this.resetWindowsPushState();
     }
 
     const MIN_HOLD_DURATION_MS = 150;
@@ -508,6 +519,12 @@ class WindowManager {
       key,
       downTime,
       isRecording: false,
+      // Safety net mirroring linuxKeyManager's WATCHDOG_MS: a lost KEY_UP
+      // must never wedge the session (and the mic) forever.
+      watchdog: setTimeout(() => {
+        debugLogger.warn("[Push-to-Talk] No KEY_UP within 30s; forcing stop", { key });
+        this.resetWindowsPushState();
+      }, WINDOWS_PUSH_WATCHDOG_MS),
     };
 
     setTimeout(() => {
@@ -533,6 +550,7 @@ class WindowManager {
     }
 
     const wasRecording = this.winPushState.isRecording;
+    clearTimeout(this.winPushState.watchdog);
     this.winPushState = null;
 
     if (wasRecording) {

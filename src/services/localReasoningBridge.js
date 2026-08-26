@@ -48,6 +48,9 @@ class LocalReasoningService {
       debugLogger.logReasoning("LOCAL_BRIDGE_INFERENCE", {
         modelId,
         config: inferenceConfig,
+        // Full payload alongside systemPrompt above — what the model will
+        // actually receive wrapped as the user message.
+        userPrompt: text,
       });
 
       const result = await modelManager.runInference(modelId, text, inferenceConfig);

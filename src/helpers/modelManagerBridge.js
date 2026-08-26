@@ -398,6 +398,10 @@ class ModelManager {
       messageCount: messages.length,
       systemPromptLength: (options.systemPrompt || "").length,
       userPromptLength: prompt.length,
+      // Full payloads for debugging prompt-template issues (sentinels,
+      // data-isolation framing). Same content the server actually receives.
+      systemPrompt: options.systemPrompt || "",
+      userPrompt: prompt,
     });
 
     const inferenceOptions = {
