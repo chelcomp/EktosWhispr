@@ -15,7 +15,7 @@ const {
 const TESSERACT_JS_VERSION = process.env.TESSERACT_JS_VERSION || "5.0.0";
 const TESSERACT_CORE_URL = `https://cdn.jsdelivr.net/npm/tesseract.js-core@${TESSERACT_JS_VERSION}/tesseract-core-simd.wasm.js`;
 const TESSERACT_ENG_TRAINEDDATA_URL =
-  "https://raw.githubusercontent.com/naptha/tessdata/gh-pages/4.0.0_fast/eng.traineddata";
+  "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/eng.traineddata";
 
 const REQUIRED_ASSETS = [
   { name: "tesseract-core-simd.wasm.js", url: TESSERACT_CORE_URL },

@@ -259,6 +259,7 @@ export function ScreenContextSettingsSection({
   setScreenContextOcrEngine,
   persistActiveWindowScreenshots,
   setPersistActiveWindowScreenshots,
+  toast,
 }: {
   includeActiveWindowContext: boolean;
   setIncludeActiveWindowContext: (v: boolean) => void;
@@ -266,9 +267,11 @@ export function ScreenContextSettingsSection({
   setScreenContextOcrEngine: (v: "auto" | "native" | "tesseract") => void;
   persistActiveWindowScreenshots: boolean;
   setPersistActiveWindowScreenshots: (v: boolean) => void;
+  toast: SettingsToastFn;
 }) {
   const { t } = useTranslation();
   const [platformSupported, setPlatformSupported] = useState(true);
+
   const [tesseractStatus, setTesseractStatus] = useState<{
     supported: boolean;
     downloaded: boolean;
@@ -309,8 +312,19 @@ export function ScreenContextSettingsSection({
 
   const handleDownloadTesseract = async () => {
     setDownloadProgress(0);
-    await window.electronAPI?.downloadTesseractOcrAssets?.();
-    refreshTesseractStatus();
+    try {
+      await window.electronAPI?.downloadTesseractOcrAssets?.();
+    } catch (error) {
+      toast({
+        title: t("settingsPage.screenContext.tesseractDownloadErrorTitle"),
+        description:
+          (error instanceof Error ? error.message : String(error)) ||
+          t("settingsPage.screenContext.tesseractDownloadErrorDescription"),
+        variant: "destructive",
+      });
+    } finally {
+      refreshTesseractStatus();
+    }
   };
 
   return (
@@ -1139,6 +1153,7 @@ function TranscriptionSectionContainer({
               setScreenContextOcrEngine={setScreenContextOcrEngine}
               persistActiveWindowScreenshots={persistActiveWindowScreenshots}
               setPersistActiveWindowScreenshots={setPersistActiveWindowScreenshots}
+              toast={toast}
             />
             <DynamicVocabularySettingsSection
               dynamicPromptVocabularyEnabled={dynamicPromptVocabularyEnabled}

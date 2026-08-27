@@ -1225,6 +1225,9 @@
       "engineTesseract": "Tesseract",
       "tesseractDownloadRequired": "Tesseract OCR assets aren't downloaded yet",
       "downloadButton": "Download",
+      "tesseractDownloadErrorTitle": "Tesseract download failed",
+      "tesseractDownloadErrorDescription": "Could not download Tesseract OCR assets. Check your network connection and try again.",
+      "tesseractDownloadingLabel": "Downloading Tesseract OCR assets…",
       "persistLabel": "Save screenshots to disk",
       "persistDescription": "Also writes the captured screenshot as a PNG file, subject to the retention setting below (Settings → Privacy & Data). Off by default."
     },
