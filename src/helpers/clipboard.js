@@ -9,7 +9,7 @@ const CACHE_TTL_MS = 30000;
 
 class ClipboardManager {
   constructor() {
-
+    this.accessibilityCache = { value: null, expiresAt: 0 };
     this.commandAvailabilityCache = new Map();
     this.nircmdPath = null;
     this.nircmdChecked = false;
@@ -18,6 +18,98 @@ class ClipboardManager {
     this.pasteQueue = Promise.resolve();
   }
 
+  _resolveNativeBinary(binaryName, platform, cacheKeyChecked, cacheKeyPath) {
+    if (this[cacheKeyChecked]) {
+      return this[cacheKeyPath];
+    }
+    this[cacheKeyChecked] = true;
+
+    if (process.platform !== platform) {
+      return null;
+    }
+
+    const candidates = new Set([
+      path.join(__dirname, "..", "..", "resources", "bin", binaryName),
+      path.join(__dirname, "..", "..", "resources", binaryName),
+    ]);
+
+    if (process.resourcesPath) {
+      [
+        path.join(process.resourcesPath, binaryName),
+        path.join(process.resourcesPath, "bin", binaryName),
+        path.join(process.resourcesPath, "resources", binaryName),
+        path.join(process.resourcesPath, "resources", "bin", binaryName),
+        path.join(process.resourcesPath, "app.asar.unpacked", "resources", binaryName),
+        path.join(process.resourcesPath, "app.asar.unpacked", "resources", "bin", binaryName),
+      ].forEach((candidate) => candidates.add(candidate));
+    }
+
+    for (const candidate of candidates) {
+      try {
+        const stats = fs.statSync(candidate);
+        if (stats.isFile()) {
+          try {
+            fs.accessSync(candidate, fs.constants.X_OK);
+          } catch {
+            fs.chmodSync(candidate, 0o755);
+          }
+          this[cacheKeyPath] = candidate;
+          return candidate;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return null;
+  }
+
+  resolveWindowsFastPasteBinary() {
+    return this._resolveNativeBinary(
+      "windows-fast-paste.exe",
+      "win32",
+      "winFastPasteChecked",
+      "winFastPastePath"
+    );
+  }
+
+  getNircmdPath() {
+    if (this.nircmdChecked) {
+      return this.nircmdPath;
+    }
+    this.nircmdChecked = true;
+
+    if (process.platform !== "win32") {
+      return null;
+    }
+
+    const possiblePaths = [
+      ...(process.resourcesPath ? [path.join(process.resourcesPath, "bin", "nircmd.exe")] : []),
+      path.join(__dirname, "..", "..", "resources", "bin", "nircmd.exe"),
+      path.join(process.cwd(), "resources", "bin", "nircmd.exe"),
+    ];
+
+    for (const nircmdPath of possiblePaths) {
+      try {
+        if (fs.existsSync(nircmdPath)) {
+          this.nircmdPath = nircmdPath;
+          return nircmdPath;
+        }
+      } catch {}
+    }
+    return null;
+  }
+
+  getNircmdStatus() {
+    if (process.platform !== "win32") {
+      return { available: false, reason: "Not Windows" };
+    }
+    const nircmdPath = this.getNircmdPath();
+    return {
+      available: !!nircmdPath,
+      path: nircmdPath,
+    };
+  }
 
 
   _saveClipboard() {
