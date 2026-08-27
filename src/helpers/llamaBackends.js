@@ -49,13 +49,7 @@ function resolveUserBinary(name) {
 function baseEnv(binDir) {
   const env = { ...process.env };
 
-  if (process.platform === "darwin") {
-    env.DYLD_LIBRARY_PATH = binDir + (env.DYLD_LIBRARY_PATH ? `:${env.DYLD_LIBRARY_PATH}` : "");
-  } else if (process.platform === "linux") {
-    env.LD_LIBRARY_PATH = binDir + (env.LD_LIBRARY_PATH ? `:${env.LD_LIBRARY_PATH}` : "");
-  } else if (process.platform === "win32") {
-    env.PATH = binDir + (env.PATH ? `;${env.PATH}` : "");
-  }
+  env.PATH = binDir + (env.PATH ? `;${env.PATH}` : "");
 
   // Disable llama.cpp auto-fit memory probing (adds ~70s to startup). Set via env
   // so builds without --fit ignore it instead of erroring. See LLAMA_ARG_FIT.
@@ -214,44 +208,9 @@ class CudaBackend extends LlamaBackend {
     return env;
   }
 }
-
-// Metal: bundled macOS binary, offloads to the Apple GPU.
-class MetalBackend extends LlamaBackend {
-  constructor() {
-    super();
-    this.name = "metal";
-    this.gpuAccelerated = true;
-  }
-
-  getBinaryPath() {
-    const ext = binExt();
-    const platformArch = `${process.platform}-${process.arch}`;
-    return (
-      resolveResourceBinary(`llama-server-${platformArch}`) ||
-      resolveResourceBinary(`llama-server${ext}`)
-    );
-  }
-
-  buildArgs(baseArgs) {
-    return [...baseArgs, "--n-gpu-layers", GPU_LAYERS];
-  }
-}
-
-/**
- * Ordered list of backends to try for the given GPU mode, most-preferred first.
- * The manager starts the first one whose binary is present and that boots
- * successfully, falling back to the next on failure.
- *
- *   darwin      → Metal only
- *   cpu         → CPU only
- *   gpu-nvidia  → CUDA → Vulkan → CPU   (force CUDA, degrade gracefully)
- *   gpu-intel   → Vulkan → CPU          (CUDA is NVIDIA-only)
- *   auto        → CUDA → Vulkan → CPU
- */
 function getBackendChain(gpuMode) {
-  if (process.platform === "darwin") return [new MetalBackend()];
-
   if (gpuMode === "cpu") return [new CpuBackend()];
+
   if (gpuMode === "gpu-intel") return [new VulkanBackend(), new CpuBackend()];
 
   // gpu-nvidia and auto both prefer CUDA, then Vulkan, then CPU.
@@ -261,7 +220,6 @@ function getBackendChain(gpuMode) {
 // Every backend type this platform could use, regardless of mode — for
 // availability checks.
 function getAllBackends() {
-  if (process.platform === "darwin") return [new MetalBackend()];
   return [new CpuBackend(), new VulkanBackend(), new CudaBackend()];
 }
 
@@ -270,7 +228,6 @@ module.exports = {
   CpuBackend,
   VulkanBackend,
   CudaBackend,
-  MetalBackend,
   getBackendChain,
   getAllBackends,
   listVulkanDevices,

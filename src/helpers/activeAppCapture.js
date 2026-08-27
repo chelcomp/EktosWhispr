@@ -5,10 +5,6 @@
  * paste-text IPC handler (see ipcHandlers.js). After mainWindow.blur(), the target
  * app becomes the OS foreground within ~20ms. detectAsync() resolves within the
  * existing 80ms blur wait so it adds zero paste latency.
- *
- * macOS: textEditMonitor already captures the app name at hotkey press time via
- * NSWorkspace (before the overlay appears). setMacOSAppName() writes it here so
- * the paste handler can read it without platform branching.
  */
 
 const { execFile } = require("child_process");
@@ -24,27 +20,14 @@ function getLastAppName() {
   return _lastAppName;
 }
 
-/** Called by TextEditMonitor after its JXA query resolves (macOS only). */
-function setMacOSAppName(name) {
-  if (process.platform !== "darwin") return;
-  _lastAppName = name || null;
-}
-
 /**
  * Detect the current foreground application asynchronously.
  * Returns a Promise<string|null> that resolves with the app name (lowercase).
- * On macOS, resolves immediately with the stored value (set at hotkey time).
- * On Windows/Linux, spawns a detection process.
  */
 function detectAsync() {
-  if (process.platform === "darwin") {
-    return Promise.resolve(_lastAppName);
-  }
-  if (process.platform === "win32") {
-    return _detectWindowsAsync();
-  }
-  return _detectLinuxAsync();
+  return _detectWindowsAsync();
 }
+
 
 function _resolveFastPasteBinary() {
   if (_fastPasteBinResolved) return _fastPasteBin;
@@ -100,20 +83,6 @@ function _detectWindowsAsync() {
   });
 }
 
-function _detectLinuxAsync() {
-  return new Promise((resolve) => {
-    execFile("xdotool", ["getactivewindow", "getwindowclassname"], { timeout: 2000 }, (err, stdout) => {
-      if (!err && stdout.trim()) {
-        const name = stdout.trim().toLowerCase();
-        _lastAppName = name;
-        resolve(name);
-      } else {
-        resolve(null);
-      }
-    });
-  });
-}
-
 function _parseWindowsOutput(stdout) {
   const exeMatch = stdout.match(/^EXE_NAME (.+)$/m);
   if (exeMatch) {
@@ -130,4 +99,4 @@ function _parseWindowsOutput(stdout) {
   return null;
 }
 
-module.exports = { detectAsync, getLastAppName, setMacOSAppName };
+module.exports = { detectAsync, getLastAppName };

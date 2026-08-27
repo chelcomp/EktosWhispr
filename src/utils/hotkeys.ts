@@ -5,8 +5,8 @@
 
 import { getPlatform, type Platform } from "./platform";
 
-export function isGlobeLikeHotkey(hotkey: string): boolean {
-  return hotkey === "GLOBE" || hotkey === "Fn";
+export function isGlobeLikeHotkey(_hotkey: string): boolean {
+  return false;
 }
 
 /**
@@ -43,27 +43,21 @@ export function isMouseButtonHotkey(hotkey: string): boolean {
   return /^MouseButton[45]$/i.test(hotkey || "");
 }
 
-function formatModifierPart(part: string, platform: Platform): string {
+function formatModifierPart(part: string, _platform: Platform): string {
   switch (part) {
     case "CommandOrControl":
-      return platform === "darwin" ? "Cmd" : "Ctrl";
-    case "Command":
-    case "Cmd":
-      return "Cmd";
+      return "Ctrl";
     case "Control":
     case "Ctrl":
       return "Ctrl";
     case "Alt":
-      return platform === "darwin" ? "Option" : "Alt";
-    case "Option":
-      return "Option";
+      return "Alt";
     case "Shift":
       return "Shift";
     case "Super":
     case "Meta":
-      return platform === "darwin" ? "Cmd" : platform === "win32" ? "Win" : "Super";
     case "Win":
-      return platform === "win32" ? "Win" : "Super";
+      return "Win";
     case "Fn":
       return "Fn";
     default:
@@ -104,26 +98,14 @@ export function formatHotkeyLabelForPlatform(hotkey: string, platform: Platform)
     return "";
   }
 
-  if (isGlobeLikeHotkey(hotkey)) {
-    return "Globe/Fn";
-  }
-
-  if (isMouseButtonHotkey(hotkey)) {
-    return hotkey === "MouseButton4" ? "Mouse Button 4" : "Mouse Button 5";
-  }
-
   // Right-side single modifiers
   const rightSideMap: Record<string, string> = {
-    RightOption: platform === "darwin" ? "Right Option" : "Right Alt",
     RightAlt: "Right Alt",
-    RightCommand: "Right Cmd",
-    RightCmd: "Right Cmd",
     RightControl: "Right Ctrl",
     RightCtrl: "Right Ctrl",
     RightShift: "Right Shift",
-    RightSuper: platform === "win32" ? "Right Win" : "Right Super",
-    RightMeta:
-      platform === "darwin" ? "Right Cmd" : platform === "win32" ? "Right Win" : "Right Super",
+    RightSuper: "Right Win",
+    RightMeta: "Right Win",
     RightWin: "Right Win",
   };
   if (rightSideMap[hotkey]) {
@@ -140,11 +122,8 @@ export function formatHotkeyLabelForPlatform(hotkey: string, platform: Platform)
 }
 
 /**
- * Gets the default hotkey for the current platform.
- * - macOS: GLOBE key (Fn key on modern Macs)
- * - Windows/Linux: Control+Super (Ctrl+Win / Ctrl+Super)
+ * Gets the default hotkey (Windows).
  */
 export function getDefaultHotkey(): string {
-  const platform = getPlatform();
-  return platform === "darwin" ? "GLOBE" : "Control+Super";
+  return "Control+Super";
 }

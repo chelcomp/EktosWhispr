@@ -21,9 +21,7 @@ class MeetingAecManager {
   }
 
   isSupported() {
-    return (
-      process.platform === "darwin" || process.platform === "linux" || process.platform === "win32"
-    );
+    return process.platform === "win32";
   }
 
   isAvailable() {

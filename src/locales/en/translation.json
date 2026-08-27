@@ -105,23 +105,11 @@
     "error": {
       "title": "EktosWhispr Startup Error",
       "message": "Failed to start the application:\n\n{{error}}\n\nPlease report this issue."
-    },
-    "globeHotkey": {
-      "title": "Globe Hotkey Unavailable",
-      "message": "EktosWhispr could not activate the Globe key hotkey.",
-      "details": {
-        "unknown": "Unknown error occurred while starting the Globe listener.",
-        "fallback": "The Globe key shortcut will remain disabled; existing keyboard shortcuts continue to work.",
-        "devHint": "Run `npm run compile:globe` and rebuild the app to regenerate the listener binary.",
-        "reinstallHint": "Try reinstalling EktosWhispr or contact support if the issue persists."
-      }
     }
   },
   "hotkey": {
     "errors": {
       "callbackRequired": "Callback function is required for hotkey setup",
-      "globeOnlyMac": "The Globe key is only available on macOS.",
-      "mouseButtonOnlyMac": "Mouse button hotkeys are currently supported on macOS only.",
       "alreadyRegistered": "\"{{hotkey}}\" is already registered by another application.",
       "osReserved": "\"{{hotkey}}\" may be reserved by your desktop environment.",
       "registrationFailed": "Could not register \"{{hotkey}}\". It may be in use by another application.",
@@ -662,9 +650,7 @@
     "permissions": {
       "paths": {
         "windowsMicrophone": "Settings -> Privacy -> Microphone",
-        "linuxSound": "your system sound settings",
         "defaultSound": "System Settings -> Sound -> Input",
-        "linuxPrivacy": "your system privacy settings",
         "defaultPrivacy": "System Settings -> Privacy & Security -> Microphone"
       },
       "micErrors": {
@@ -692,33 +678,24 @@
         "microphonePermissionRequired": "Microphone Permission Required",
         "accessibilityNeeded": "Accessibility Permissions Needed",
         "readyToGo": "Ready to Go!",
-        "waylandClipboardMode": "Clipboard Mode on Wayland",
         "optionalPasteTool": "Optional: Install Paste Tool"
       },
       "descriptions": {
         "accessibilityNeeded": "Please grant accessibility permissions in System Settings to enable automatic text pasting.",
         "windowsReady": "Windows does not require special permissions for automatic pasting. You're all set!",
-        "linuxReadyWithMethod": "Automatic pasting is available using {{method}}. You are all set!",
-        "waylandClipboardMode": "Automatic pasting is not available on this Wayland session. EktosWhispr will copy text to your clipboard and you can paste with Ctrl+V.",
         "optionalPasteTool": "For automatic pasting, install {{tool}}:\n\n{{installCmd}}{{waylandNote}}\n\nWithout this, you can still use EktosWhispr - text will be copied to your clipboard and you can paste with Ctrl+V."
       },
       "alerts": {
         "accessibilityNeeded": "Accessibility permissions needed! Please grant them in System Settings."
       },
-      "notes": {
-        "waylandWtype": "\n\nNote: For XWayland apps, xdotool also works.",
-        "waylandXwaylandOnly": "\n\nNote: Automatic pasting works for XWayland apps only."
-      },
+      "notes": {},
       "labels": {
-        "defaultPasteTool": "xdotool",
-        "xdotoolXwayland": "xdotool (XWayland apps)"
+        "defaultPasteTool": "xdotool"
       },
       "accessibilityTestText": "EktosWhispr accessibility test",
       "warning": {
         "messages": {
-          "macos": "Check Sound settings to select your input device",
-          "windows": "Check Windows Settings to select your input device",
-          "linux": "Check system sound settings to select your input device"
+          "windows": "Check Windows Settings to select your input device"
         },
         "soundLabel": "Sound",
         "privacyLabel": "Privacy"
@@ -992,25 +969,9 @@
     "description": "Use these platform rules to choose a shortcut that won't conflict with your system.",
     "examplesTitle": "Valid examples",
     "platforms": {
-      "linux": "Linux",
-      "macos": "macOS",
       "windows": "Windows"
     },
     "recommended": {
-      "linux": {
-        "0": "Ctrl+Alt+Space",
-        "1": "Super+S",
-        "2": "Ctrl+Alt+D",
-        "3": "Ctrl+Shift+J",
-        "4": "Alt+Space"
-      },
-      "macos": {
-        "0": "⌥Space",
-        "1": "⌃⌥S",
-        "2": "⌃⌥D",
-        "3": "Fn",
-        "4": "⌘⇧J"
-      },
       "windows": {
         "0": "Ctrl+Alt+Space",
         "1": "Ctrl+Shift+S",
@@ -1037,7 +998,6 @@
     "clickToSet": "Click to set hotkey",
     "fnCaptureHint": "Press a key to combine, or release for Globe",
     "fnHeldHint": "+ key or release for Globe",
-    "globe": "Globe",
     "hotkeyLabel": "Hotkey",
     "keyHint": "+ key",
     "listening": "Listening...",
@@ -1101,8 +1061,6 @@
     "recheckChecking": "Checking...",
     "title": "Automatic Pasting",
     "usingMethodPrefix": "Using",
-    "waylandClipboardDescription": "Automatic pasting isn't available on this Wayland session. EktosWhispr will copy text to your clipboard so you can paste manually with Ctrl+V.",
-    "waylandClipboardTitle": "Clipboard Mode on Wayland",
     "windowsReady": "Windows supports automatic pasting out of the box. No setup required!",
     "withoutToolPrefix": "Without this tool, EktosWhispr will copy text to your clipboard. You can then paste manually with Ctrl+V.",
     "xwaylandAppsOnly": "automatic pasting works for XWayland apps only"
@@ -1707,11 +1665,6 @@
         "description": "The key combination that starts and stops voice dictation",
         "resetToDefault": "Reset to {{hotkey}}",
         "title": "Dictation Hotkey",
-        "linuxPttPermissionTitle": "Hold to Speak needs extra setup",
-        "linuxPttPermissionDescription": "Run this command and log out/in: sudo usermod -aG input $USER",
-        "linuxPttSetupTitle": "Hold to Speak needs setup",
-        "linuxPttSetupDescription": "Your user needs access to keyboard input devices.",
-        "linuxPttSetupNote": "After running the command, log out and log back in.",
         "hyprlandConfigWriteWarningTitle": "Hyprland keybinds will not persist",
         "hyprlandConfigWriteWarningDescription": "EktosWhispr cannot write to {{path}}, so keybinds will not survive a Hyprland config reload. Make sure the file exists and is writable.",
         "hyprlandUnbindDescription": "On Hyprland, EktosWhispr claims the selected shortcut. Any existing Hyprland bind that uses the same key combination will be unbound when EktosWhispr registers its shortcut."
@@ -1762,76 +1715,6 @@
         "description": "Control how EktosWhispr behaves when it launches",
         "startMinimized": "Start minimized",
         "startMinimizedDescription": "Launch without showing the control panel window"
-      },
-      "waylandPaste": {
-        "title": "Wayland Paste Setup",
-        "description": "Auto-paste on Wayland requires ydotool. Check the status of each component below.",
-        "allGoodDesc": "Auto-paste is ready to go.",
-        "recheck": "Re-check",
-        "copy": "Copy",
-        "ydotoolDesc": "Input automation tool for Wayland",
-        "ydotooldDesc": "Daemon for ydotool (separate package on Ubuntu/Pop!_OS)",
-        "uinputDesc": "Kernel input device access",
-        "uinputRuleFound": "Rule present but not active. A reboot should fix it.",
-        "uinputRuleMissing": "no udev rule found",
-        "inputGroup": "input group",
-        "inputGroupDesc": "User must be in the input group (requires re-login)",
-        "service": "systemd service",
-        "serviceDesc": "User service file for auto-starting ydotoold",
-        "daemon": "ydotoold daemon",
-        "daemonDesc": "Background service must be running",
-        "guide": {
-          "open": "Guide",
-          "ydotool": {
-            "step1Title": "Install ydotool",
-            "step1Desc": "Use your distribution's package manager to install ydotool.",
-            "step2Title": "Verify installation",
-            "step2Desc": "Check that ydotool is available in your PATH."
-          },
-          "ydotoold": {
-            "step1Title": "Install ydotoold",
-            "step1Desc": "On Ubuntu and Pop!_OS, ydotoold is a separate package. On Fedora, it's included with ydotool."
-          },
-          "uinput": {
-            "ruleFoundTitle": "udev rule already configured",
-            "ruleFoundDesc": "The udev rule for /dev/uinput is already on your system but hasn't taken effect. Try reloading:",
-            "rebootTitle": "If reloading didn't help, reboot",
-            "rebootDesc": "On some distros, udev changes only apply after a full reboot. Restart your computer and come back to re-check.",
-            "step1Title": "Create a udev rule",
-            "step1Desc": "This rule grants access to /dev/uinput for users in the input group.",
-            "step2Title": "Reload udev rules",
-            "step2Desc": "Apply the new rule without rebooting."
-          },
-          "group": {
-            "step1Title": "Add your user to the input group",
-            "step2Title": "Log out and back in",
-            "step2Desc": "Group changes only take effect after a new login session. Log out of your desktop and log back in, then reopen EktosWhispr."
-          },
-          "service": {
-            "step1Title": "Create the service directory",
-            "step2Title": "Create the service file",
-            "step2Desc": "This creates a user-level systemd service that starts ydotoold automatically when you log in.",
-            "step3Title": "Reload and enable"
-          },
-          "daemon": {
-            "step1Title": "Start the daemon",
-            "step1Desc": "Start ydotoold and enable it so it runs on every login.",
-            "step2Title": "Verify it's running"
-          },
-          "xclip": {
-            "step1Title": "Install xclip"
-          }
-        },
-        "xclipDesc": "Clipboard tool for KDE Wayland paste (xclip or xsel)",
-        "nixos": {
-          "intro": "You're on NixOS. Auto-paste needs ydotool and /dev/uinput access, which NixOS grants declaratively.",
-          "detected": "Detected",
-          "manualTitle": "Add this to your configuration",
-          "manualDesc": "Configure it yourself, then rebuild.",
-          "flakeTitle": "Installing via our flake?",
-          "flakeDesc": "If you install EktosWhispr from the flake, programs.ektoswhispr.enable turns on ydotool, the uinput module and the group memberships for you.",
-          "rebuildNote": "Run sudo nixos-rebuild switch, then log out and back in so the group change and the /dev/uinput rule take effect. Replace <you> with your username."
-        }
       },
       "updates": {
         "badges": {

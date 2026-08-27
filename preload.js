@@ -227,10 +227,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // BYOK API keys (get/save for every provider in the secretKeys manifest)
   ...secretKeyApi,
 
-  // Clipboard functions
-  checkAccessibilityPermission: (silent) =>
-    ipcRenderer.invoke("check-accessibility-permission", silent),
-  promptAccessibilityPermission: () => ipcRenderer.invoke("prompt-accessibility-permission"),
   readClipboard: () => ipcRenderer.invoke("read-clipboard"),
   writeClipboard: (text) => ipcRenderer.invoke("write-clipboard", text),
   checkPasteTools: () => ipcRenderer.invoke("check-paste-tools"),
@@ -348,8 +344,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   updateHotkey: (hotkey) => ipcRenderer.invoke("update-hotkey", hotkey),
   setHotkeyListeningMode: (enabled) => ipcRenderer.invoke("set-hotkey-listening-mode", enabled),
   getHotkeyModeInfo: () => ipcRenderer.invoke("get-hotkey-mode-info"),
-  getHyprlandConfigStatus: () => ipcRenderer.invoke("get-hyprland-config-status"),
-  startWindowDrag: () => ipcRenderer.invoke("start-window-drag"),
   stopWindowDrag: () => ipcRenderer.invoke("stop-window-drag"),
   setMainWindowInteractivity: (interactive) =>
     ipcRenderer.invoke("set-main-window-interactivity", interactive),
@@ -541,19 +535,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getLogLevel: () => ipcRenderer.invoke("get-log-level"),
   log: (entry) => ipcRenderer.invoke("app-log", entry),
 
-  // ydotool status check
-  getYdotoolStatus: () => ipcRenderer.invoke("get-ydotool-status"),
-
   // Debug logging management
   getDebugState: () => ipcRenderer.invoke("get-debug-state"),
   setDebugLogging: (enabled) => ipcRenderer.invoke("set-debug-logging", enabled),
   openLogsFolder: () => ipcRenderer.invoke("open-logs-folder"),
 
-  // System settings helpers for microphone/audio permissions
-  requestMicrophoneAccess: () => ipcRenderer.invoke("request-microphone-access"),
   checkMicrophoneAccess: () => ipcRenderer.invoke("check-microphone-access"),
-  checkSystemAudioAccess: () => ipcRenderer.invoke("check-system-audio-access"),
-  requestSystemAudioAccess: () => ipcRenderer.invoke("request-system-audio-access"),
   openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
   openSoundInputSettings: () => ipcRenderer.invoke("open-sound-input-settings"),
   openAccessibilitySettings: () => ipcRenderer.invoke("open-accessibility-settings"),
@@ -616,55 +603,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     (callback) => (_event, data) => callback(data)
   ),
 
-  // Globe key listener for hotkey capture (macOS only)
-  onGlobeKeyPressed: (callback) => {
-    const listener = () => callback?.();
-    ipcRenderer.on("globe-key-pressed", listener);
-    return () => ipcRenderer.removeListener("globe-key-pressed", listener);
-  },
-  onGlobeKeyReleased: (callback) => {
-    const listener = () => callback?.();
-    ipcRenderer.on("globe-key-released", listener);
-    return () => ipcRenderer.removeListener("globe-key-released", listener);
-  },
-
   // Hotkey registration events (for notifying user when hotkey fails)
-  onHotkeyFallbackUsed: (callback) => {
-    const listener = (_event, data) => callback?.(data);
-    ipcRenderer.on("hotkey-fallback-used", listener);
-    return () => ipcRenderer.removeListener("hotkey-fallback-used", listener);
-  },
-  onHotkeyRegistrationFailed: (callback) => {
-    const listener = (_event, data) => callback?.(data);
-    ipcRenderer.on("hotkey-registration-failed", listener);
-    return () => ipcRenderer.removeListener("hotkey-registration-failed", listener);
-  },
-  onSettingUpdated: (callback) => {
-    const listener = (_event, data) => callback?.(data);
-    ipcRenderer.on("setting-updated", listener);
-    return () => ipcRenderer.removeListener("setting-updated", listener);
-  },
-  onDictationKeyActive: (callback) => {
-    const listener = (_event, key) => callback?.(key);
-    ipcRenderer.on("dictation-key-active", listener);
-    return () => ipcRenderer.removeListener("dictation-key-active", listener);
-  },
-  onWindowsPushToTalkUnavailable: registerListener("windows-ptt-unavailable"),
-  onLinuxPttPermissionDenied: registerListener(
-    "linux-ptt-permission-denied",
-    (callback) => () => callback()
-  ),
 
   // Settings shortcut (Cmd+, / Ctrl+,)
   onShowSettings: registerListener("show-settings", (callback) => () => callback()),
 
-  // Accessibility permission events (macOS)
-  onAccessibilityMissing: (callback) => {
-    const listener = () => callback?.();
-    ipcRenderer.on("accessibility-missing", listener);
-    return () => ipcRenderer.removeListener("accessibility-missing", listener);
-  },
-  checkAccessibilityTrusted: () => ipcRenderer.invoke("check-accessibility-trusted"),
 
   // Notify main process of activation mode changes (for Windows Push-to-Talk)
   notifyActivationModeChanged: (mode) => ipcRenderer.send("activation-mode-changed", mode),

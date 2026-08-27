@@ -21,9 +21,8 @@ const DEFAULT_INFO: HotkeyModeInfo = {
 };
 
 /**
- * Resolves how the dictation hotkey is registered for the current session
- * (native shortcut, Hyprland) and, on Hyprland, whether its config is
- * persistable. `scope` tags log output for the calling surface.
+ * Resolves how the dictation hotkey is registered for the current session.
+ * Windows uses native shortcuts (RegisterHotKey) — Hyprland / GNOME are gone.
  */
 export function useHotkeyModeInfo(scope: string): HotkeyModeInfo {
   const [modeInfo, setModeInfo] = useState<HotkeyModeInfo>(DEFAULT_INFO);
@@ -34,15 +33,11 @@ export function useHotkeyModeInfo(scope: string): HotkeyModeInfo {
       try {
         const info = await window.electronAPI?.getHotkeyModeInfo?.();
         if (!info || cancelled) return;
-        const hyprlandConfigStatus = info.isUsingHyprland
-          ? ((await window.electronAPI?.getHyprlandConfigStatus?.()) ?? null)
-          : null;
-        if (cancelled) return;
         setModeInfo({
           isUsingNativeShortcut: info.isUsingNativeShortcut,
-          isUsingHyprland: info.isUsingHyprland,
+          isUsingHyprland: false,
           supportsPushToTalk: info.supportsPushToTalk,
-          hyprlandConfigStatus,
+          hyprlandConfigStatus: null,
         });
       } catch (error) {
         logger.error("Failed to check hotkey mode", { error }, scope);

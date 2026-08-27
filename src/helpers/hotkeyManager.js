@@ -1,9 +1,7 @@
 const EventEmitter = require("events");
 const { globalShortcut, BrowserWindow } = require("electron");
 const debugLogger = require("./debugLogger");
-const GnomeShortcutManager = require("./gnomeShortcut");
-const HyprlandShortcutManager = require("./hyprlandShortcut");
-const KDEShortcutManager = require("./kdeShortcut");
+
 const { i18nMain } = require("./i18nMain");
 const { parseHotkeyList } = require("./hotkeyList");
 

@@ -69,10 +69,7 @@ class DiarizationManager {
     if (this.cachedBinaryPath) return this.cachedBinaryPath;
 
     const platformArch = `${process.platform}-${process.arch}`;
-    const binaryName =
-      process.platform === "win32"
-        ? `sherpa-onnx-diarize-${platformArch}.exe`
-        : `sherpa-onnx-diarize-${platformArch}`;
+    const binaryName = `sherpa-onnx-diarize-${platformArch}.exe`;
 
     const resolved = resolveBinaryPath(binaryName);
     if (resolved) this.cachedBinaryPath = resolved;
@@ -349,7 +346,7 @@ class DiarizationManager {
       const proc = spawn(binaryPath, args, {
         stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,
-        detached: process.platform !== "win32",
+        detached: false,
       });
 
       this._process = proc;

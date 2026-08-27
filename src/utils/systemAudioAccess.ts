@@ -1,8 +1,8 @@
 import type { SystemAudioAccessResult, SystemAudioStrategy } from "../types/electron";
 import { getCachedPlatform } from "./platform";
 
-export type RendererSystemAudioStrategy = Extract<SystemAudioStrategy, "loopback">;
-
+type Platform = "win32";
+type RendererSystemAudioStrategy = Extract<SystemAudioStrategy, "loopback">;
 export const DEFAULT_SYSTEM_AUDIO_ACCESS: SystemAudioAccessResult = {
   granted: false,
   status: "unsupported",
@@ -18,27 +18,14 @@ export const DEFAULT_SYSTEM_AUDIO_ACCESS: SystemAudioAccessResult = {
 };
 
 export const getFallbackSystemAudioAccess = (
-  platform = getCachedPlatform()
-): SystemAudioAccessResult => {
-  if (platform === "win32") {
-    return {
-      ...DEFAULT_SYSTEM_AUDIO_ACCESS,
-      granted: true,
-      status: "granted",
-      mode: "loopback",
-      strategy: "loopback",
-    };
-  }
-
-  if (platform === "linux") {
-    return {
-      ...DEFAULT_SYSTEM_AUDIO_ACCESS,
-      status: "unknown",
-    };
-  }
-
-  return DEFAULT_SYSTEM_AUDIO_ACCESS;
-};
+  _platform: Platform = getCachedPlatform()
+): SystemAudioAccessResult => ({
+  ...DEFAULT_SYSTEM_AUDIO_ACCESS,
+  granted: true,
+  status: "granted",
+  mode: "loopback",
+  strategy: "loopback",
+});
 
 export const canManageSystemAudioInApp = ({ mode }: Pick<SystemAudioAccessResult, "mode">) =>
   mode === "native";

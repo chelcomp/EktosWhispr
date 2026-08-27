@@ -5,7 +5,6 @@ const {
   CpuBackend,
   VulkanBackend,
   CudaBackend,
-  MetalBackend,
   getBackendChain,
   parseVulkanDeviceList,
   pickVulkanDevice,
@@ -14,15 +13,13 @@ const {
 const BASE_ARGS = ["--model", "/tmp/model.gguf", "--port", "8221"];
 const DUMMY_BIN = "/opt/ektos/bin/llama-server";
 
-// --- args: only GPU backends offload layers -------------------------------
-
 test("cpu backend does not add --n-gpu-layers", () => {
   const args = new CpuBackend().buildArgs(BASE_ARGS);
   assert.equal(args.includes("--n-gpu-layers"), false);
 });
 
-test("cuda/vulkan/metal backends offload all layers", () => {
-  for (const Backend of [CudaBackend, VulkanBackend, MetalBackend]) {
+test("cuda/vulkan backends offload all layers", () => {
+  for (const Backend of [CudaBackend, VulkanBackend]) {
     const args = new Backend().buildArgs(BASE_ARGS);
     const idx = args.indexOf("--n-gpu-layers");
     assert.ok(idx >= 0, `${Backend.name} should offload layers`);
@@ -67,12 +64,11 @@ test("vulkan and cpu backends never set CUDA env vars", () => {
 });
 
 test("every backend disables llama.cpp auto-fit probing", () => {
-  for (const Backend of [CpuBackend, VulkanBackend, CudaBackend, MetalBackend]) {
+  for (const Backend of [CpuBackend, VulkanBackend, CudaBackend]) {
     const env = new Backend().buildEnv(DUMMY_BIN);
     assert.equal(env.LLAMA_ARG_FIT, "off");
   }
 });
-
 // --- Vulkan device selection (mixed-vendor GPU pinning) --------------------
 
 test("parseVulkanDeviceList parses --list-devices output despite parens in device names", () => {

@@ -1,33 +1,10 @@
 const path = require("path");
 const { app } = require("electron");
 
-const isGnomeWayland =
-  process.platform === "linux" &&
-  process.env.XDG_SESSION_TYPE === "wayland" &&
-  /gnome|ubuntu|unity/i.test(process.env.XDG_CURRENT_DESKTOP || "");
+const MAIN_OVERLAY_TYPE = "normal";
 
-const isKDEWayland =
-  process.platform === "linux" &&
-  process.env.XDG_SESSION_TYPE === "wayland" &&
-  /kde/i.test(process.env.XDG_CURRENT_DESKTOP || "");
+const FLOATING_OVERLAY_TYPE = "normal";
 
-const MAIN_OVERLAY_TYPE =
-  process.platform === "darwin"
-    ? "panel"
-    : process.platform === "linux"
-      ? isGnomeWayland || isKDEWayland
-        ? "normal"
-        : "toolbar"
-      : "normal";
-
-const FLOATING_OVERLAY_TYPE =
-  process.platform === "darwin"
-    ? "panel"
-    : process.platform === "linux"
-      ? isKDEWayland
-        ? "normal"
-        : "toolbar"
-      : "normal";
 
 const WINDOW_SIZES = {
   BASE: { width: 96, height: 96 },
@@ -58,7 +35,7 @@ const MAIN_WINDOW_CONFIG = {
   transparent: true,
   show: false,
   focusable: false,
-  visibleOnAllWorkspaces: process.platform !== "win32",
+  visibleOnAllWorkspaces: false,
   fullScreenable: false,
   hasShadow: false,
   acceptsFirstMouse: true,
@@ -68,11 +45,8 @@ const MAIN_WINDOW_CONFIG = {
   skipTaskbar: true,
   backgroundColor: "#00000000",
 };
-
-// Resolve the application icon for BrowserWindow (dev and packaged).
 function resolveAppIcon() {
-  const ext = process.platform === "darwin" ? "icns" : process.platform === "win32" ? "ico" : "png";
-  return path.join(app.getAppPath(), "src", "assets", `icon.${ext}`);
+  return path.join(app.getAppPath(), "src", "assets", "icon.ico");
 }
 
 // Control panel window configuration
@@ -99,10 +73,7 @@ const CONTROL_PANEL_CONFIG = {
   resizable: true,
   show: false,
   frame: false,
-  ...(process.platform === "darwin" && {
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 20, y: 20 },
-  }),
+
   transparent: false,
   minimizable: true,
   maximizable: true,
@@ -140,7 +111,7 @@ const TRANSCRIPTION_PREVIEW_CONFIG = {
     contextIsolation: true,
     sandbox: true,
   },
-  visibleOnAllWorkspaces: process.platform !== "win32",
+  visibleOnAllWorkspaces: false,
   type: FLOATING_OVERLAY_TYPE,
 };
 
@@ -221,27 +192,7 @@ class WindowPositionUtil {
   }
 
   static setupAlwaysOnTop(window) {
-    if (process.platform === "darwin") {
-      // macOS: Use panel level for proper floating behavior
-      // This ensures the window stays on top across spaces and fullscreen apps
-      window.setAlwaysOnTop(true, "floating", 1);
-      window.setVisibleOnAllWorkspaces(true, {
-        visibleOnFullScreen: true,
-        skipTransformProcessType: true, // Keep Dock/Command-Tab behaviour
-      });
-      window.setFullScreenable(false);
-
-      if (window.isVisible()) {
-        window.setAlwaysOnTop(true, "floating", 1);
-      }
-    } else if (process.platform === "win32") {
-      window.setAlwaysOnTop(true, "pop-up-menu");
-    } else if (isGnomeWayland) {
-      window.setAlwaysOnTop(true, "floating");
-    } else {
-      // KDE XWayland and other Linux — "screen-saver" is the strongest z-level
-      window.setAlwaysOnTop(true, "screen-saver");
-    }
+    window.setAlwaysOnTop(true, "pop-up-menu");
   }
 }
 
@@ -278,7 +229,7 @@ const AGENT_OVERLAY_CONFIG = {
   fullScreenable: false,
   acceptsFirstMouse: true,
   type: FLOATING_OVERLAY_TYPE,
-  visibleOnAllWorkspaces: process.platform !== "win32",
+  visibleOnAllWorkspaces: false,
   webPreferences: {
     preload: path.join(__dirname, "..", "..", "preload.js"),
     nodeIntegration: false,

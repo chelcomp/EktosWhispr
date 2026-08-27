@@ -172,54 +172,36 @@ class TransformManager {
 
   _simulateCopy() {
     return new Promise((resolve) => {
-      if (process.platform === "win32") {
-        const nircmdPath = this._clipboardManager?.getNircmdPath?.();
-        if (nircmdPath) {
-          const proc = spawn(nircmdPath, ["sendkeypress", "ctrl+c"]);
-          let done = false;
-          const finish = () => { if (!done) { done = true; resolve(); } };
-          proc.on("close", finish);
-          setTimeout(finish, 400);
-        } else {
-          exec(
-            'powershell -command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(\'^\' + \'c\')"',
-            () => resolve()
-          );
-        }
-      } else if (process.platform === "darwin") {
+      const nircmdPath = this._clipboardManager?.getNircmdPath?.();
+      if (nircmdPath) {
+        const proc = spawn(nircmdPath, ["sendkeypress", "ctrl+c"]);
+        let done = false;
+        const finish = () => { if (!done) { done = true; resolve(); } };
+        proc.on("close", finish);
+        setTimeout(finish, 400);
+      } else {
         exec(
-          'osascript -e \'tell application "System Events" to keystroke "c" using command down\'',
+          'powershell -command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(\'^\' + \'c\')"',
           () => resolve()
         );
-      } else {
-        exec("xdotool key ctrl+c", () => resolve());
       }
     });
   }
 
   _simulatePaste() {
     return new Promise((resolve) => {
-      if (process.platform === "win32") {
-        const nircmdPath = this._clipboardManager?.getNircmdPath?.();
-        if (nircmdPath) {
-          const proc = spawn(nircmdPath, ["sendkeypress", "ctrl+v"]);
-          let done = false;
-          const finish = () => { if (!done) { done = true; resolve(); } };
-          proc.on("close", finish);
-          setTimeout(finish, 400);
-        } else {
-          exec(
-            'powershell -command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(\'^\' + \'v\')"',
-            () => resolve()
-          );
-        }
-      } else if (process.platform === "darwin") {
+      const nircmdPath = this._clipboardManager?.getNircmdPath?.();
+      if (nircmdPath) {
+        const proc = spawn(nircmdPath, ["sendkeypress", "ctrl+v"]);
+        let done = false;
+        const finish = () => { if (!done) { done = true; resolve(); } };
+        proc.on("close", finish);
+        setTimeout(finish, 400);
+      } else {
         exec(
-          'osascript -e \'tell application "System Events" to keystroke "v" using command down\'',
+          'powershell -command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait(\'^\' + \'v\')"',
           () => resolve()
         );
-      } else {
-        exec("xdotool key ctrl+v", () => resolve());
       }
     });
   }

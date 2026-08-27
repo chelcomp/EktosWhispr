@@ -1,121 +1,46 @@
 // electron-builder afterPack hook
 //
 // Runs after electron-builder assembles the output directory but before the
-// final installer (DMG/NSIS/AppImage) is created. Operates only on the output
-// directory — never touches source node_modules/.
+// final NSIS installer is created. Operates only on the output directory —
+// never touches source node_modules/.
 //
-// 1. Strips non-target platform/arch binaries from onnxruntime-node
-//    (saves 150–180 MB per build).
-// 2. Wraps the Linux binary in a shell script that forces XWayland, reads
-//    user flags from ~/.config/ektos-whispr-flags.conf, and falls back to
-//    --no-sandbox where the Chromium sandbox cannot work (AppImage/tar.gz
-//    on distros that restrict unprivileged user namespaces).
+// 1. Strips non-win32 binaries and non-target architectures from
+//    onnxruntime-node (saves 150–180 MB per build).
+// 2. Verifies the Windows meeting-aec helper is present (optional).
 // 3. Fails the build if required binaries (ffmpeg-static, ps-list vendor exe,
 //    onnx worker script) are missing from app.asar.unpacked/.
 
 const fs = require("fs");
 const path = require("path");
-const { execFileSync } = require("child_process");
 const { Arch } = require("app-builder-lib");
-const { buildLinuxWrapperScript } = require("./lib/linux-launcher");
 
 // ---------------------------------------------------------------------------
-// macOS resource binary signing
+// Helpers
 // ---------------------------------------------------------------------------
-
-function resolveAppPath(context) {
-  if (context.electronPlatformName !== "darwin") {
-    return context.appOutDir;
-  }
-
-  if (context.appOutDir.endsWith(".app")) {
-    return context.appOutDir;
-  }
-
-  return path.join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`);
-}
 
 function resolveResourcesDir(context) {
-  return context.electronPlatformName === "darwin"
-    ? path.join(resolveAppPath(context), "Contents", "Resources")
-    : path.join(context.appOutDir, "resources");
-}
-
-function collectFiles(rootDir) {
-  if (!fs.existsSync(rootDir)) {
-    return [];
+  // app-builder context.outDir is the platform-specific output dir (e.g. win-unpacked).
+  // appOut is the path containing resources/, app.asar, etc.
+  if (context.appOutDir) return context.appOutDir;
+  if (context.outputDir) {
+    return path.join(
+      context.outputDir,
+      `${context.packager.appInfo.productFilename || "app"}-${context.electronPlatformName}-${Arch[context.arch]}`
+    );
   }
-
-  const files = [];
-  const queue = [rootDir];
-
-  while (queue.length > 0) {
-    const currentDir = queue.pop();
-    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const fullPath = path.join(currentDir, entry.name);
-
-      if (entry.isDirectory()) {
-        queue.push(fullPath);
-        continue;
-      }
-
-      if (entry.isFile()) {
-        files.push(fullPath);
-      }
-    }
-  }
-
-  return files;
-}
-
-function isMachOBinary(filePath) {
-  try {
-    const description = execFileSync("file", ["-b", filePath], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    });
-
-    return description.includes("Mach-O");
-  } catch {
-    return false;
-  }
-}
-
-function registerMacResourceBinariesForSigning(context) {
-  if (context.electronPlatformName !== "darwin") {
-    return;
-  }
-
-  const resourcesDir = resolveResourcesDir(context);
-  const machOFiles = collectFiles(resourcesDir).filter(isMachOBinary);
-
-  if (machOFiles.length === 0) {
-    return;
-  }
-
-  const macConfig = context.packager.platformSpecificBuildOptions;
-  const existingBinaries = Array.isArray(macConfig.binaries) ? macConfig.binaries : [];
-
-  macConfig.binaries = [...new Set([...existingBinaries, ...machOFiles])];
-
-  console.log(
-    `  afterPack: registered ${machOFiles.length} Mach-O files under Contents/Resources for signing`
-  );
+  return context.outDir;
 }
 
 // ---------------------------------------------------------------------------
-// onnxruntime-node binary stripping
+// onnxruntime-node binary stripping (Windows-only)
 // ---------------------------------------------------------------------------
 
 function stripOnnxruntimeBinaries(context) {
-  const platform = context.electronPlatformName; // darwin | linux | win32
-  const archName = Arch[context.arch]; // x64 | arm64 | ia32 | universal
+  if (context.electronPlatformName !== "win32") return;
 
-  // Resolve the resources directory inside the packed output
+  const archName = Arch[context.arch]; // x64 | arm64 | ia32
+
   const resourcesDir = resolveResourcesDir(context);
-
   const onnxBinDir = path.join(
     resourcesDir,
     "app.asar.unpacked",
@@ -127,8 +52,13 @@ function stripOnnxruntimeBinaries(context) {
 
   if (!fs.existsSync(onnxBinDir)) return;
 
-  // For universal macOS builds keep both arm64 and x64 under darwin/
-  const keepArchs = archName === "universal" ? ["arm64", "x64"] : [archName];
+  // Build the list of arch dirs to keep for the current Windows target.
+  const keepArchs =
+    archName === "x64"
+      ? ["x64"]
+      : archName === "arm64"
+        ? ["arm64"]
+        : [archName];
 
   const platformDirs = fs.readdirSync(onnxBinDir);
   let totalRemoved = 0;
@@ -137,14 +67,14 @@ function stripOnnxruntimeBinaries(context) {
     const fullPath = path.join(onnxBinDir, dir);
     if (!fs.statSync(fullPath).isDirectory()) continue;
 
-    if (dir !== platform) {
-      // Wrong platform — remove entirely
+    // Windows is the only supported target — strip every other platform dir.
+    if (dir !== "win32") {
       fs.rmSync(fullPath, { recursive: true, force: true });
       totalRemoved++;
       continue;
     }
 
-    // Right platform — strip non-target architectures
+    // Right platform — strip non-target architectures.
     const archDirs = fs.readdirSync(fullPath);
     for (const arch of archDirs) {
       const archPath = path.join(fullPath, arch);
@@ -158,61 +88,39 @@ function stripOnnxruntimeBinaries(context) {
 
   if (totalRemoved > 0) {
     console.log(
-      `  afterPack: stripped ${totalRemoved} non-target onnxruntime-node directories (keeping ${platform}/${keepArchs.join(",")})`
+      `  afterPack: stripped ${totalRemoved} non-target onnxruntime-node directories (keeping win32/${keepArchs.join(",")})`
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// Linux XWayland wrapper
+// Windows meeting-aec helper presence check (optional)
 // ---------------------------------------------------------------------------
 
-function wrapLinuxBinary(context) {
-  if (context.electronPlatformName !== "linux") return;
-
-  const appDir = context.appOutDir;
-  const binaryName = context.packager.executableName;
-  const binaryPath = path.join(appDir, binaryName);
-  const realBinaryPath = path.join(appDir, binaryName + "-app");
-
-  fs.renameSync(binaryPath, realBinaryPath);
-
-  fs.writeFileSync(binaryPath, buildLinuxWrapperScript(binaryName), { mode: 0o755 });
-}
-
 function verifyMeetingAecHelper(context) {
-  const platform = context.electronPlatformName;
+  if (context.electronPlatformName !== "win32") return;
+
   const archName = Arch[context.arch];
-
-  if (!["darwin", "linux", "win32"].includes(platform)) {
-    return;
-  }
-
-  const binaryName = `meeting-aec-helper-${platform}-${archName}${platform === "win32" ? ".exe" : ""}`;
+  const binaryName = `meeting-aec-helper-win32-${archName}.exe`;
   const resourcesDir = resolveResourcesDir(context);
   const binaryPath = path.join(resourcesDir, "bin", binaryName);
 
   if (!fs.existsSync(binaryPath)) {
     console.warn(`  afterPack: missing optional meeting AEC helper (${binaryName})`);
-    return;
-  }
-
-  if (platform !== "win32") {
-    fs.chmodSync(binaryPath, 0o755);
   }
 }
 
+// ---------------------------------------------------------------------------
+// Unpacked-binary verification (required)
+// ---------------------------------------------------------------------------
+
 function verifyUnpackedBinaries(context) {
+  if (context.electronPlatformName !== "win32") return;
+
   const unpackedDir = path.join(resolveResourcesDir(context), "app.asar.unpacked");
   const unpackedModulesDir = path.join(unpackedDir, "node_modules");
 
-  const isWindows = context.electronPlatformName === "win32";
-
-  const ffmpegPath = path.join(
-    unpackedModulesDir,
-    "ffmpeg-static",
-    isWindows ? "ffmpeg.exe" : "ffmpeg"
-  );
+  const ffmpegPath = path.join(unpackedModulesDir, "ffmpeg-static", "ffmpeg.exe");
   if (!fs.existsSync(ffmpegPath)) {
     throw new Error(
       `afterPack: missing ${ffmpegPath} — ffmpeg-static was not unpacked from app.asar (asarUnpack/packaging failure); the packed app cannot spawn FFmpeg`
@@ -226,18 +134,14 @@ function verifyUnpackedBinaries(context) {
     );
   }
 
-  // electron-builder strips *.exe from node_modules on non-Windows targets,
-  // so the ps-list vendor executable only exists in Windows builds.
-  if (isWindows) {
-    const psListVendorDir = path.join(unpackedModulesDir, "ps-list", "vendor");
-    const hasFastlist =
-      fs.existsSync(psListVendorDir) &&
-      fs.readdirSync(psListVendorDir).some((name) => /^fastlist-.*\.exe$/.test(name));
-    if (!hasFastlist) {
-      throw new Error(
-        `afterPack: no fastlist-*.exe in ${psListVendorDir} — ps-list vendor executable was not unpacked from app.asar (asarUnpack/packaging failure); Windows process detection would break`
-      );
-    }
+  const psListVendorDir = path.join(unpackedModulesDir, "ps-list", "vendor");
+  const hasFastlist =
+    fs.existsSync(psListVendorDir) &&
+    fs.readdirSync(psListVendorDir).some((name) => /^fastlist-.*\.exe$/.test(name));
+  if (!hasFastlist) {
+    throw new Error(
+      `afterPack: no fastlist-*.exe in ${psListVendorDir} — ps-list vendor executable was not unpacked from app.asar (asarUnpack/packaging failure); Windows process detection would break`
+    );
   }
 
   console.log("  afterPack: verified unpacked bundled binaries");
@@ -249,8 +153,6 @@ function verifyUnpackedBinaries(context) {
 
 exports.default = async function (context) {
   stripOnnxruntimeBinaries(context);
-  wrapLinuxBinary(context);
   verifyMeetingAecHelper(context);
   verifyUnpackedBinaries(context);
-  registerMacResourceBinariesForSigning(context);
 };

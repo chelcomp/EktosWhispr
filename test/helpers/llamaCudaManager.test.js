@@ -44,18 +44,29 @@ function makeTempUserDataDir() {
 
 // --- isSupported ----------------------------------------------------------
 
-test("isSupported is true for win32-x64 and linux-x64", () => {
+test("isSupported is true for win32-x64", () => {
   const userDataDir = makeTempUserDataDir();
-  for (const [platform, arch] of [
-    ["win32", "x64"],
-    ["linux", "x64"],
-  ]) {
+  for (const [platform, arch] of [["win32", "x64"]]) {
     setPlatformArch(platform, arch);
     const manager = loadLlamaCudaManager(userDataDir);
     assert.equal(manager.isSupported(), true, `${platform}-${arch} should be supported`);
   }
 });
 
+test("isSupported is false for non-win32 or arm64", () => {
+  const userDataDir = makeTempUserDataDir();
+  for (const [platform, arch] of [
+    ["darwin", "arm64"],
+    ["darwin", "x64"],
+    ["linux", "x64"],
+    ["linux", "arm64"],
+    ["win32", "arm64"],
+  ]) {
+    setPlatformArch(platform, arch);
+    const manager = loadLlamaCudaManager(userDataDir);
+    assert.equal(manager.isSupported(), false, `${platform}-${arch} should not be supported`);
+  }
+});
 test("isSupported is false for darwin or arm64", () => {
   const userDataDir = makeTempUserDataDir();
   for (const [platform, arch] of [

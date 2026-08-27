@@ -33,12 +33,6 @@ const VULKAN_ASSETS = {
     outputName: "llama-server-vulkan.exe",
     libPattern: /\.dll$/i,
   },
-  "linux-x64": {
-    assetPattern: /^llama-.*-bin-ubuntu-vulkan-x64\.tar\.gz$/,
-    binaryName: "llama-server",
-    outputName: "llama-server-vulkan",
-    libPattern: /\.so(\.\d+)*$/,
-  },
 };
 
 class LlamaVulkanManager {
@@ -130,13 +124,11 @@ class LlamaVulkanManager {
 
         const outputPath = path.join(this.binDir, config.outputName);
         await fsPromises.copyFile(binaryPath, outputPath);
-        if (process.platform !== "win32") await fsPromises.chmod(outputPath, 0o755);
 
         const libs = await findFiles(extractDir, config.libPattern);
         for (const lib of libs) {
           const dest = path.join(this.binDir, path.basename(lib));
           await fsPromises.copyFile(lib, dest);
-          if (process.platform !== "win32") await fsPromises.chmod(dest, 0o755);
         }
 
         debugLogger.info("Vulkan llama-server installed", { path: outputPath });

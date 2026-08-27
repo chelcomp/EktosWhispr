@@ -260,33 +260,14 @@ class WhisperServerManager extends EventEmitter {
         : null;
 
       if (unpackedPath && fs.existsSync(unpackedPath)) {
-        // Ensure executable permissions on non-Windows
-        if (process.platform !== "win32") {
-          try {
-            fs.accessSync(unpackedPath, fs.constants.X_OK);
-          } catch {
-            try {
-              fs.chmodSync(unpackedPath, 0o755);
-            } catch (chmodErr) {
-              debugLogger.warn("Failed to chmod FFmpeg", { error: chmodErr.message });
-            }
-          }
-        }
+
         this.cachedFFmpegPath = unpackedPath;
         return unpackedPath;
       }
 
       // Try original path (development or if not in ASAR)
       if (fs.existsSync(ffmpegPath)) {
-        if (process.platform !== "win32") {
-          try {
-            fs.accessSync(ffmpegPath, fs.constants.X_OK);
-          } catch {
-            // Not executable, fall through to system candidates
-            debugLogger.debug("FFmpeg exists but not executable", { ffmpegPath });
-            throw new Error("Not executable");
-          }
-        }
+
         this.cachedFFmpegPath = ffmpegPath;
         return ffmpegPath;
       }
@@ -295,12 +276,7 @@ class WhisperServerManager extends EventEmitter {
     }
 
     // Try system FFmpeg locations
-    const systemCandidates =
-      process.platform === "darwin"
-        ? ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"]
-        : process.platform === "win32"
-          ? ["C:\\ffmpeg\\bin\\ffmpeg.exe"]
-          : ["/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
+    const systemCandidates = ["C:\\ffmpeg\\bin\\ffmpeg.exe"];
 
     for (const candidate of systemCandidates) {
       if (fs.existsSync(candidate)) {
@@ -318,13 +294,7 @@ class WhisperServerManager extends EventEmitter {
       if (!dir) continue;
       const candidate = path.join(dir, pathBinary);
       if (!fs.existsSync(candidate)) continue;
-      if (process.platform !== "win32") {
-        try {
-          fs.accessSync(candidate, fs.constants.X_OK);
-        } catch {
-          continue;
-        }
-      }
+
       this.cachedFFmpegPath = candidate;
       return candidate;
     }

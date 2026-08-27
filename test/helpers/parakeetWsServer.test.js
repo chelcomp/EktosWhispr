@@ -74,11 +74,11 @@ test("getWsBinaryPath resolves the offline binary name for the current platform"
 });
 
 test("getWsBinaryPath resolves once per runtime and serves the rest from cache", () => {
-  setPlatformArch("linux", "x64");
+  setPlatformArch("win32", "x64");
   let resolveCalls = 0;
   const server = loadParakeetWsServer({
     resolvedNames: new Proxy(
-      { "sherpa-onnx-ws-linux-x64": "/resolved/offline" },
+      { "sherpa-onnx-ws-win32-x64.exe": "/resolved/offline" },
       {
         get(target, prop) {
           resolveCalls++;
@@ -92,7 +92,6 @@ test("getWsBinaryPath resolves once per runtime and serves the rest from cache",
   assert.equal(server.getWsBinaryPath("offline"), "/resolved/offline");
   assert.equal(resolveCalls, 1, "resolveBinaryPath should only run on the first lookup");
 });
-
 test("invalidateBinaryCache clears cached paths for every runtime", () => {
   const server = loadParakeetWsServer({});
   server.cachedBinaryPaths = { offline: "/a", online: "/b" };

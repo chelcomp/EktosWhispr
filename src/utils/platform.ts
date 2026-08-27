@@ -1,28 +1,19 @@
-export type Platform = "darwin" | "win32" | "linux";
+export type Platform = "win32";
 
 /**
- * Detects the current platform using Electron when available,
- * falling back to user agent detection.
+ * Detects the current platform using Electron when available.
  */
 export function getPlatform(): Platform {
   // Try Electron API first
   if (typeof window !== "undefined" && window.electronAPI?.getPlatform) {
     const platform = window.electronAPI.getPlatform();
-    if (platform === "darwin" || platform === "win32" || platform === "linux") {
-      return platform;
+    if (platform === "win32") {
+      return "win32";
     }
   }
 
-  // Fallback to user agent detection
-  if (typeof navigator !== "undefined") {
-    const ua = navigator.userAgent.toLowerCase();
-    if (ua.includes("mac")) return "darwin";
-    if (ua.includes("win")) return "win32";
-    if (ua.includes("linux")) return "linux";
-  }
-
-  // Default to darwin
-  return "darwin";
+  // Default to win32
+  return "win32";
 }
 
 /**

@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Button } from "./button";
 import { DownloadProgressBar } from "./DownloadProgressBar";
 import type { GpuModeInfo } from "../../types/electron";
-import { getCachedPlatform } from "../../utils/platform";
 
 interface GpuModeSelectorProps {
   type: "whisper" | "llama";
@@ -13,7 +12,6 @@ type GpuMode = "auto" | "cpu" | "gpu-intel" | "gpu-nvidia";
 
 export function GpuModeSelector({ type }: GpuModeSelectorProps) {
   const { t } = useTranslation();
-  const platform = getCachedPlatform();
   const [info, setInfo] = useState<GpuModeInfo | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadPct, setDownloadPct] = useState(0);
@@ -53,8 +51,6 @@ export function GpuModeSelector({ type }: GpuModeSelectorProps) {
       cleanupCuda?.();
     };
   }, [type]);
-
-  if (platform === "darwin") return null;
 
   const currentMode: GpuMode =
     type === "whisper" ? (info?.whisperMode ?? "auto") : (info?.llamaMode ?? "auto");

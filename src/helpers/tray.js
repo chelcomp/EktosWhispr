@@ -68,10 +68,6 @@ class TrayManager {
       this.attachControlPanelListeners(this.controlPanelWindow);
 
       if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
-        // Show dock icon on macOS when control panel opens
-        if (process.platform === "darwin" && app.dock) {
-          app.dock.show();
-        }
         if (this.controlPanelWindow.isMinimized()) {
           this.controlPanelWindow.restore();
         }
@@ -116,9 +112,7 @@ class TrayManager {
 
       this.tray = new Tray(trayIcon);
 
-      if (process.platform === "darwin") {
-        this.tray.setIgnoreDoubleClickEvents(true);
-      }
+
 
       this.updateTrayMenu();
       this.setupTrayEventHandlers();
@@ -128,45 +122,20 @@ class TrayManager {
   }
 
   async loadTrayIcon() {
-    const platform = process.platform;
     const isDevelopment = process.env.NODE_ENV === "development";
 
     const candidatePaths = [];
-
-    if (platform === "darwin") {
-      if (isDevelopment) {
-        candidatePaths.push(path.join(__dirname, "..", "assets", "iconTemplate@3x.png"));
-      } else {
-        candidatePaths.push(
-          path.join(process.resourcesPath, "src", "assets", "iconTemplate@3x.png"),
-          path.join(process.resourcesPath, "assets", "iconTemplate@3x.png"),
-          path.join(
-            process.resourcesPath,
-            "app.asar.unpacked",
-            "src",
-            "assets",
-            "iconTemplate@3x.png"
-          ),
-          path.join(__dirname, "..", "..", "src", "assets", "iconTemplate@3x.png"),
-          path.join(app.getAppPath(), "src", "assets", "iconTemplate@3x.png")
-        );
-      }
+    const fileName = "icon.ico";
+    if (isDevelopment) {
+      candidatePaths.push(path.join(__dirname, "..", "assets", fileName));
     } else {
-      const fileName = platform === "win32" ? "icon.ico" : "icon.png";
-      if (isDevelopment) {
-        candidatePaths.push(
-          path.join(__dirname, "..", "assets", fileName),
-          path.join(__dirname, "..", "assets", "icon.png")
-        );
-      } else {
-        candidatePaths.push(
-          path.join(process.resourcesPath, "src", "assets", fileName),
-          path.join(process.resourcesPath, "assets", fileName),
-          path.join(process.resourcesPath, "app.asar.unpacked", "src", "assets", fileName),
-          path.join(__dirname, "..", "..", "src", "assets", fileName),
-          path.join(app.getAppPath(), "src", "assets", fileName)
-        );
-      }
+      candidatePaths.push(
+        path.join(process.resourcesPath, "src", "assets", fileName),
+        path.join(process.resourcesPath, "assets", fileName),
+        path.join(process.resourcesPath, "app.asar.unpacked", "src", "assets", fileName),
+        path.join(__dirname, "..", "..", "src", "assets", fileName),
+        path.join(app.getAppPath(), "src", "assets", fileName)
+      );
     }
 
     for (const testPath of candidatePaths) {
@@ -174,9 +143,6 @@ class TrayManager {
         if (fs.existsSync(testPath)) {
           const icon = nativeImage.createFromPath(testPath);
           if (icon && !icon.isEmpty()) {
-            if (platform === "darwin") {
-              icon.setTemplateImage(true);
-            }
             debugLogger.debug("Using tray icon", { path: testPath }, "tray");
             return icon;
           }
@@ -277,11 +243,10 @@ class TrayManager {
       return;
     }
 
-    if (process.platform !== "darwin") {
-      this.tray.on("click", () => {
-        void this.showControlPanelFromTray();
-      });
-    }
+    this.tray.on("click", () => {
+      void this.showControlPanelFromTray();
+    });
+
 
     this.tray.on("destroyed", () => {
       debugLogger.debug("Tray icon destroyed", undefined, "tray");

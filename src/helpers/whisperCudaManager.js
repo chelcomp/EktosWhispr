@@ -18,22 +18,19 @@ const { getSafeTempDir } = require("./safeTempDir");
 const GITHUB_RELEASE_URL = "https://api.github.com/repos/OpenWhispr/whisper.cpp/releases/latest";
 
 const PLATFORM_BINARY_NAMES = {
-  linux: "whisper-server-linux-x64-cuda",
   win32: "whisper-server-win32-x64-cuda.exe",
 };
 
 const PLATFORM_ASSET_NAMES = {
-  linux: "whisper-server-linux-x64-cuda.zip",
   win32: "whisper-server-win32-x64-cuda.zip",
 };
 
 const COMPANION_PATTERNS = {
-  linux: /\.so(\.\d+)*$/,
   win32: /\.dll$/i,
 };
 
 function isSupportedPlatform() {
-  return process.platform === "linux" || process.platform === "win32";
+  return process.platform === "win32";
 }
 
 class WhisperCudaManager {
@@ -155,17 +152,13 @@ class WhisperCudaManager {
 
       const dest = path.join(binDir, binaryName);
       await fsPromises.copyFile(binaryPath, dest);
-      if (process.platform === "linux") {
-        await fsPromises.chmod(dest, 0o755);
-      }
+
 
       const libs = await findFiles(extractDir, companionPattern);
       for (const lib of libs) {
         const libDest = path.join(binDir, path.basename(lib));
         await fsPromises.copyFile(lib, libDest);
-        if (process.platform === "linux") {
-          await fsPromises.chmod(libDest, 0o755);
-        }
+
       }
 
       debugLogger.info("CUDA binary download complete", {

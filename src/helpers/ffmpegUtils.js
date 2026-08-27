@@ -55,13 +55,7 @@ function getFFmpegPath() {
     debugLogger.debug("Bundled FFmpeg not available", { error: err.message });
   }
 
-  const systemCandidates =
-    process.platform === "darwin"
-      ? ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"]
-      : process.platform === "win32"
-        ? ["C:\\ffmpeg\\bin\\ffmpeg.exe"]
-        : ["/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
-
+  const systemCandidates = ["C:\\ffmpeg\\bin\\ffmpeg.exe"];
   for (const candidate of systemCandidates) {
     if (fs.existsSync(candidate)) {
       cachedFFmpegPath = candidate;
@@ -70,21 +64,13 @@ function getFFmpegPath() {
   }
 
   const pathEnv = process.env.PATH || "";
-  const pathSep = process.platform === "win32" ? ";" : ":";
-  const pathDirs = pathEnv.split(pathSep).map((entry) => entry.replace(/^"|"$/g, ""));
-  const pathBinary = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+  const pathDirs = pathEnv.split(";").map((entry) => entry.replace(/^"|"$/g, ""));
+  const pathBinary = "ffmpeg.exe";
 
   for (const dir of pathDirs) {
     if (!dir) continue;
     const candidate = path.join(dir, pathBinary);
     if (!fs.existsSync(candidate)) continue;
-    if (process.platform !== "win32") {
-      try {
-        fs.accessSync(candidate, fs.constants.X_OK);
-      } catch {
-        continue;
-      }
-    }
     cachedFFmpegPath = candidate;
     return candidate;
   }

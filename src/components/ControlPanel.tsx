@@ -2,7 +2,6 @@ import React, { Suspense, useState, useEffect, useRef, useCallback } from "react
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Download, RefreshCw, Loader2, Zap, ChevronLeft } from "lucide-react";
-import PostMigrationOnboarding from "./PostMigrationOnboarding";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
 import { useHotkey } from "../hooks/useHotkey";
@@ -31,8 +30,6 @@ import MeetingRecordingMount from "./MeetingRecordingMount";
 import MeetingRecordingPill from "./notes/MeetingRecordingPill";
 import WindowControls from "./WindowControls";
 
-import { getCachedPlatform } from "../utils/platform";
-import { isAccessibilitySkipped } from "../utils/permissions";
 import {
   setActiveNoteId,
   setActiveFolderId,
@@ -45,7 +42,6 @@ import BackgroundActionToastListener from "./notes/BackgroundActionToastListener
 import { syncService } from "../services/SyncService.js";
 
 
-const platform = getCachedPlatform();
 const SettingsModal = React.lazy(() => import("./SettingsModal"));
 
 const PersonalNotesView = React.lazy(() => import("./notes/PersonalNotesView"));
@@ -64,7 +60,6 @@ export default function ControlPanel({ initialSettingsSection }: ControlPanelPro
   const history = useTranscriptions();
   const [isLoading, setIsLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(!!initialSettingsSection);
-  const [showPostMigration, setShowPostMigration] = useState(false);
   const [settingsSection, setSettingsSection] = useState<string | undefined>(
     initialSettingsSection
   );
@@ -160,21 +155,8 @@ export default function ControlPanel({ initialSettingsSection }: ControlPanelPro
   }, []);
 
   useEffect(() => {
-    if (platform !== "darwin") return;
-    window.electronAPI?.getPostMigrationState?.().then((state) => {
-      if (state?.justMigrated) setShowPostMigration(true);
-    });
-  }, []);
-
-  const dismissPostMigrationPermanently = useCallback(async () => {
-    await window.electronAPI?.markBundleMigrated?.();
-    setShowPostMigration(false);
-  }, []);
-
-  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const mod = platform === "darwin" ? e.metaKey : e.ctrlKey;
-      if (mod && e.key === ",") {
+      if (e.ctrlKey && e.key === ",") {
         e.preventDefault();
         setShowSettings(true);
       }
@@ -212,7 +194,7 @@ export default function ControlPanel({ initialSettingsSection }: ControlPanelPro
   }, [updateError, toast, t]);
 
   useEffect(() => {
-    if (platform === "darwin" || gpuBannerDismissed) return;
+    if (gpuBannerDismissed) return;
     const detect = async () => {
       const results = { cuda: false, vulkan: false };
       if (useLocalWhisper && localTranscriptionProvider === "whisper") {
@@ -279,22 +261,6 @@ export default function ControlPanel({ initialSettingsSection }: ControlPanelPro
     return () => cleanup?.();
   }, []);
 
-  // When accessibility is missing on macOS, open the permissions settings page
-  useEffect(() => {
-    const cleanup = window.electronAPI?.onAccessibilityMissing?.(async () => {
-      if (isAccessibilitySkipped()) return;
-      const migration = await window.electronAPI?.getPostMigrationState?.();
-      if (migration?.justMigrated) return;
-      setSettingsSection("privacyData");
-      setShowSettings(true);
-      toast({
-        title: t("controlPanel.accessibilityMissing.title"),
-        description: t("controlPanel.accessibilityMissing.description"),
-        duration: 10000,
-      });
-    });
-    return () => cleanup?.();
-  }, [toast, t]);
 
   useEffect(() => {
     fetchStreamingProviders();
@@ -592,11 +558,6 @@ export default function ControlPanel({ initialSettingsSection }: ControlPanelPro
         onOk={() => {}}
       />
 
-      <PostMigrationOnboarding
-        open={showPostMigration}
-        onOpenChange={setShowPostMigration}
-        onDone={dismissPostMigrationPermanently}
-      />
 
       {showSettings && (
         <Suspense fallback={null}>
@@ -649,7 +610,7 @@ export default function ControlPanel({ initialSettingsSection }: ControlPanelPro
           >
             {isSidePanelLayout && (
               <div
-                className={platform === "darwin" ? "ml-[84px] mt-[16px]" : "ml-2"}
+                className="ml-2"
                 style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
               >
                 <Button
@@ -664,11 +625,9 @@ export default function ControlPanel({ initialSettingsSection }: ControlPanelPro
               </div>
             )}
             <div className="flex-1" />
-            {platform !== "darwin" && (
-              <div className="pr-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
-                <WindowControls />
-              </div>
-            )}
+            <div className="pr-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+              <WindowControls />
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto pt-1">
             {(gpuAccelAvailable.cuda || gpuAccelAvailable.vulkan) &&

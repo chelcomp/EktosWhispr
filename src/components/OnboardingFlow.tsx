@@ -40,7 +40,6 @@ import { setAgentName as saveAgentName } from "../utils/agentName";
 import {
   formatHotkeyLabel,
   getDefaultHotkey,
-  isGlobeLikeHotkey,
   parseHotkeyList,
   serializeHotkeyList,
 } from "../utils/hotkeys";
@@ -292,19 +291,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
         // Get platform-appropriate default hotkey from backend (accounts for
         // X11 modifier-only and GNOME gsettings limitations)
-        const defaultHotkey =
-          (await window.electronAPI?.getEffectiveDefaultHotkey?.()) || getDefaultHotkey();
-        const platform = window.electronAPI?.getPlatform?.() ?? "darwin";
-
         // Only auto-register if no hotkey is currently set
-        const shouldAutoRegister =
-          !hotkey || hotkey.trim() === "" || (platform !== "darwin" && isGlobeLikeHotkey(hotkey));
+        const shouldAutoRegister = !hotkey || hotkey.trim() === "";
 
         if (shouldAutoRegister) {
           // Try to register the default hotkey silently
-          const success = await registerHotkey(defaultHotkey);
+          const success = await registerHotkey(getDefaultHotkey());
           if (success) {
-            setHotkey(defaultHotkey);
+            setHotkey(getDefaultHotkey());
           }
         }
       } catch (error) {
@@ -394,16 +388,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     if (currentStep >= steps.length - 1) {
       return;
     }
-
-    const currentStepId = steps[currentStep]?.id;
     const isPermissionsGate = currentStepId === "permissions";
-    if (
-      getPlatform() === "darwin" &&
-      isPermissionsGate &&
-      !permissionsHook.accessibilityPermissionGranted
-    ) {
-      setAccessibilitySkipped(true);
-    }
 
     // When leaving the STT step, mirror the full selection (mode + model + provider) to
     // meeting and upload scopes so the dictation test step already uses the right model.
@@ -557,9 +542,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         );
 
       case "permissions": {
-        const platform = permissionsHook.pasteToolsInfo?.platform;
-        const isMacOS = platform === "darwin";
-
         return (
           <div className="space-y-4">
             {/* Header - compact */}
@@ -568,9 +550,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 {t("onboarding.permissions.title")}
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {isMacOS
-                  ? t("onboarding.permissions.requiredForApp")
-                  : t("onboarding.permissions.microphoneRequired")}
+                {t("onboarding.permissions.microphoneRequired")}
               </p>
             </div>
 
@@ -689,21 +669,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         </div>
 
         {/* Mode section - inline with hotkey */}
-        {(!isUsingNativeShortcut || getCachedPlatform() === "linux") && (
-          <div className="p-4 flex items-center justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {t("onboarding.activation.mode")}
-              </span>
-              <p className="text-xs text-muted-foreground/70 mt-0.5">
-                {activationMode === "tap"
-                  ? t("onboarding.activation.tapDescription")
-                  : t("onboarding.activation.holdDescription")}
-              </p>
-            </div>
-            <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+        <div className="p-4 flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {t("onboarding.activation.mode")}
+            </span>
+            <p className="text-xs text-muted-foreground/70 mt-0.5">
+              {activationMode === "tap"
+                ? t("onboarding.activation.tapDescription")
+                : t("onboarding.activation.holdDescription")}
+            </p>
           </div>
-        )}
+          <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+        </div>
       </div>
 
       {/* Test area - minimal chrome */}
@@ -713,7 +691,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {t("onboarding.activation.test")}
           </span>
           <span className="text-xs text-muted-foreground/60">
-            {activationMode === "tap" || (isUsingNativeShortcut && getCachedPlatform() !== "linux")
+            {activationMode === "tap"
               ? t("onboarding.activation.hotkeyToStartStop", { hotkey: readableHotkey })
               : t("onboarding.activation.holdHotkey", { hotkey: readableHotkey })}
           </span>
@@ -823,12 +801,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     };
   }, []);
 
-  const onboardingPlatform =
-    typeof window !== "undefined" && window.electronAPI?.getPlatform
-      ? window.electronAPI.getPlatform()
-      : "darwin";
-
   return (
+
     <div
       className="h-screen flex flex-col bg-background"
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
@@ -868,11 +842,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           className="flex items-center justify-end w-full h-10 shrink-0"
           style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
         >
-          {onboardingPlatform !== "darwin" && (
-            <div className="pr-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
-              <WindowControls />
-            </div>
-          )}
+          <div className="pr-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+            <WindowControls />
+          </div>
         </div>
       ) : (
         <div className="shrink-0 z-10">
@@ -880,17 +852,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             showTitle={true}
             className="bg-background backdrop-blur-xl border-b border-border shadow-sm"
             actions={<SupportDropdown />}
-            center={
-              onboardingPlatform === "darwin" ? (
-                <StepProgress steps={steps} currentStep={currentStep} />
-              ) : undefined
-            }
-          ></TitleBar>
+          />
         </div>
       )}
 
-      {/* Progress bar — on macOS it lives centered in the title bar instead */}
-      {showProgress && onboardingPlatform !== "darwin" && (
+      {/* Progress bar */}
+      {showProgress && (
         <div className="shrink-0 bg-background/80 backdrop-blur-2xl border-b border-white/5 px-6 md:px-12 py-3 z-10">
           <div className="max-w-3xl mx-auto">
             <StepProgress steps={steps} currentStep={currentStep} />

@@ -17,13 +17,9 @@ if (typeof window === "undefined") {
 class LlamaCppInstaller {
   private installDir: string;
   private binPath: string | null = null;
-  private platform: string;
-  private arch: string;
 
   constructor() {
     this.installDir = path.join(app.getPath("userData"), "llama-cpp");
-    this.platform = process.platform;
-    this.arch = process.arch;
   }
 
   async ensureInstallDir(): Promise<void> {
@@ -31,7 +27,7 @@ class LlamaCppInstaller {
   }
 
   getBinaryName(): string {
-    return this.platform === "win32" ? "llama-cli.exe" : "llama-cli";
+    return "llama-cli.exe";
   }
 
   getInstalledBinaryPath(): string {
@@ -51,8 +47,7 @@ class LlamaCppInstaller {
 
   async checkSystemInstallation(): Promise<boolean> {
     return new Promise((resolve) => {
-      const checkCommand = this.platform === "win32" ? "where" : "which";
-      spawn(checkCommand, ["llama-cli"])
+      spawn("where", ["llama-cli"])
         .on("close", (code) => {
           resolve(code === 0);
         })
@@ -88,16 +83,7 @@ class LlamaCppInstaller {
 
   getDownloadUrl(): string {
     const baseUrl = "https://github.com/ggerganov/llama.cpp/releases/latest/download";
-
-    if (this.platform === "darwin") {
-      return `${baseUrl}/llama-${this.arch === "arm64" ? "arm64" : "x64"}-apple-darwin.zip`;
-    } else if (this.platform === "linux") {
-      return `${baseUrl}/llama-x64-linux.tar.gz`;
-    } else if (this.platform === "win32") {
-      return `${baseUrl}/llama-x64-windows.zip`;
-    }
-
-    throw new Error(`Unsupported platform: ${this.platform}`);
+    return `${baseUrl}/llama-x64-windows.zip`;
   }
 
   async download(url: string, destPath: string): Promise<void> {
@@ -180,11 +166,7 @@ class LlamaCppInstaller {
       // Clean up archive
       await fsPromises.unlink(archivePath);
 
-      // Make binary executable on Unix
-      if (this.platform !== "win32") {
-        const binaryPath = this.getInstalledBinaryPath();
-        await fsPromises.chmod(binaryPath, 0o755);
-      }
+      // Windows binaries are executable by default; no chmod needed
 
       // Verify installation
       if (await this.isInstalled()) {

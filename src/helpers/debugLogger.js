@@ -405,8 +405,8 @@ class DebugLogger {
           size: stats.size,
           isFile: stats.isFile(),
           // Skip X_OK check on Windows (not reliable)
-          isExecutable: process.platform !== "win32" ? !!(stats.mode & fs.constants.X_OK) : false,
-          executableCheckSkipped: process.platform === "win32",
+          isExecutable: false,
+          executableCheckSkipped: true,
           permissions: stats.mode.toString(8),
           modified: stats.mtime,
         };
@@ -427,38 +427,20 @@ class DebugLogger {
       }
     }
 
-    // Platform-specific path checks
-    let possiblePaths = [];
-    if (process.platform === "win32") {
-      possiblePaths = [
-        ffmpegPath,
-        ffmpegPath?.replace(/app\.asar([/\\])/, "app.asar.unpacked$1"),
-        path.join(
-          process.resourcesPath || "",
-          "app.asar.unpacked",
-          "node_modules",
-          "ffmpeg-static",
-          "ffmpeg.exe"
-        ),
-        path.join(process.env.ProgramFiles || "C:\\Program Files", "ffmpeg", "bin", "ffmpeg.exe"),
-        "C:\\ffmpeg\\bin\\ffmpeg.exe",
-      ].filter(Boolean);
-    } else {
-      possiblePaths = [
-        ffmpegPath,
-        ffmpegPath?.replace("app.asar", "app.asar.unpacked"),
-        path.join(
-          process.resourcesPath || "",
-          "app.asar.unpacked",
-          "node_modules",
-          "ffmpeg-static",
-          "ffmpeg"
-        ),
-        "/usr/local/bin/ffmpeg",
-        "/opt/homebrew/bin/ffmpeg",
-        "/usr/bin/ffmpeg",
-      ].filter(Boolean);
-    }
+    // Platform-specific path checks (Windows only)
+    const possiblePaths = [
+      ffmpegPath,
+      ffmpegPath?.replace(/app\.asar([/\\])/, "app.asar.unpacked$1"),
+      path.join(
+        process.resourcesPath || "",
+        "app.asar.unpacked",
+        "node_modules",
+        "ffmpeg-static",
+        "ffmpeg.exe"
+      ),
+      path.join(process.env.ProgramFiles || "C:\\Program Files", "ffmpeg", "bin", "ffmpeg.exe"),
+      "C:\\ffmpeg\\bin\\ffmpeg.exe",
+    ].filter(Boolean);
 
     debugInfo.pathChecks = possiblePaths.map((p) => ({
       path: p,

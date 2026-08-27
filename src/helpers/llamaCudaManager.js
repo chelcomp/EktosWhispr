@@ -39,13 +39,6 @@ const CUDA_ASSETS = {
     outputName: "llama-server-cuda.exe",
     libPattern: /\.dll$/i,
   },
-  "linux-x64": {
-    assetPattern: /^llama-.*-bin-ubuntu-cuda-x64\.tar\.gz$/,
-    runtimePattern: null,
-    binaryName: "llama-server",
-    outputName: "llama-server-cuda",
-    libPattern: /\.so(\.\d+)*$/,
-  },
 };
 
 class LlamaCudaManager {
@@ -171,16 +164,12 @@ class LlamaCudaManager {
 
         const outputPath = path.join(this.binDir, config.outputName);
         await fsPromises.copyFile(binaryPath, outputPath);
-        if (process.platform !== "win32") await fsPromises.chmod(outputPath, 0o755);
 
         const libs = await findFiles(extractDir, config.libPattern);
         for (const lib of libs) {
           const dest = path.join(this.binDir, path.basename(lib));
           await fsPromises.copyFile(lib, dest);
-          if (process.platform !== "win32") await fsPromises.chmod(dest, 0o755);
         }
-
-        debugLogger.info("CUDA llama-server installed", { path: outputPath });
       } finally {
         await fsPromises.rm(extractDir, { recursive: true, force: true }).catch(() => {});
       }

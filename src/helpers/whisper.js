@@ -688,18 +688,7 @@ class WhisperManager {
       if (unpackedPath) {
         debugLogger.debug("Checking unpacked ASAR path", { unpackedPath });
         if (fs.existsSync(unpackedPath)) {
-          if (process.platform !== "win32") {
-            try {
-              fs.accessSync(unpackedPath, fs.constants.X_OK);
-            } catch {
-              debugLogger.debug("FFmpeg not executable, attempting chmod", { unpackedPath });
-              try {
-                fs.chmodSync(unpackedPath, 0o755);
-              } catch (chmodErr) {
-                debugLogger.warn("Failed to chmod FFmpeg", { error: chmodErr.message });
-              }
-            }
-          }
+
           debugLogger.debug("Found FFmpeg in unpacked ASAR", { path: unpackedPath });
           this.cachedFFmpegPath = unpackedPath;
           return unpackedPath;
@@ -710,9 +699,7 @@ class WhisperManager {
 
       // Try original path (development or if not in ASAR)
       if (fs.existsSync(ffmpegPath)) {
-        if (process.platform !== "win32") {
-          fs.accessSync(ffmpegPath, fs.constants.X_OK);
-        }
+
         debugLogger.debug("Found FFmpeg at bundled path", { path: ffmpegPath });
         this.cachedFFmpegPath = ffmpegPath;
         return ffmpegPath;
@@ -724,12 +711,7 @@ class WhisperManager {
     }
 
     // Try system FFmpeg paths
-    const systemCandidates =
-      process.platform === "darwin"
-        ? ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"]
-        : process.platform === "win32"
-          ? ["C:\\ffmpeg\\bin\\ffmpeg.exe"]
-          : ["/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
+    const systemCandidates = ["C:\\ffmpeg\\bin\\ffmpeg.exe"];
 
     debugLogger.debug("Trying system FFmpeg candidates", { candidates: systemCandidates });
 

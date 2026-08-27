@@ -1,21 +1,3 @@
-// KDE/GNOME Wayland: self-relaunch with --ozone-platform=x11 to force XWayland.
-// Chromium picks the display backend before JS runs, so appendSwitch is too late.
-if (
-  process.platform === "linux" &&
-  process.env.XDG_SESSION_TYPE === "wayland" &&
-  !process.argv.includes("--ozone-platform=x11")
-) {
-  const desktop = (process.env.XDG_CURRENT_DESKTOP || "").toLowerCase();
-  if (desktop.includes("kde") || /gnome|ubuntu|unity|cosmic/.test(desktop)) {
-    const { spawn } = require("child_process");
-    spawn(process.execPath, [...process.argv.slice(1), "--ozone-platform=x11"], {
-      stdio: "inherit",
-      detached: true,
-    }).unref();
-    process.exit(0);
-  }
-}
-
 const {
   app,
   desktopCapturer,
@@ -25,7 +7,6 @@ const {
   ipcMain,
   net,
   session,
-  systemPreferences,
 } = require("electron");
 const path = require("path");
 const http = require("http");
@@ -102,27 +83,6 @@ require("dotenv").config({
 // leaving hundreds of MB of committed virtual heap that the app never needs.
 app.commandLine.appendSwitch("js-flags", "--max-old-space-size=256");
 
-// Fix transparent window flickering on Linux: --enable-transparent-visuals requires
-// the compositor to set up an ARGB visual before any windows are created.
-// --disable-gpu-compositing prevents GPU compositing conflicts with the compositor.
-if (process.platform === "linux") {
-  app.commandLine.appendSwitch("gtk-version", "3");
-  app.commandLine.appendSwitch("enable-transparent-visuals");
-  app.commandLine.appendSwitch("disable-gpu-compositing");
-}
-
-// Wayland: packaged builds use the wrapper script (scripts/afterPack.js) to
-// force --ozone-platform=x11 before Electron starts. appendSwitch below is a
-// best-effort fallback for unpackaged dev mode (may not take effect on E39+).
-if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") {
-  app.commandLine.appendSwitch("enable-features", "WaylandWindowDecorations");
-}
-
-// Set desktop filename so Wayland compositors can match windows to the .desktop entry.
-// This allows XDG portals (e.g. PipeWire) to persist permissions across sessions.
-if (process.platform === "linux") {
-  app.setDesktopName("ektos-whispr.desktop");
-}
 
 // Group all windows under single taskbar entry on Windows
 if (process.platform === "win32") {
@@ -172,19 +132,13 @@ const TrayManager = require("./src/helpers/tray");
 const IPCHandlers = require("./src/helpers/ipcHandlers");
 const CliBridge = require("./src/helpers/cliBridge");
 const UpdateManager = require("./src/updater");
-const GlobeKeyManager = require("./src/helpers/globeKeyManager");
-const DevServerManager = require("./src/helpers/devServerManager");
 const WindowsKeyManager = require("./src/helpers/windowsKeyManager");
-const LinuxKeyManager = require("./src/helpers/linuxKeyManager");
 const TextEditMonitor = require("./src/helpers/textEditMonitor");
 const WhisperCudaManager = require("./src/helpers/whisperCudaManager");
-const AudioTapManager = require("./src/helpers/audioTapManager");
-const LinuxPortalAudioManager = require("./src/helpers/linuxPortalAudioManager");
 const WindowsLoopbackAudioManager = require("./src/helpers/windowsLoopbackAudioManager");
 const MeetingAecManager = require("./src/helpers/meetingAecManager");
 const ManualMeetingLauncher = require("./src/helpers/manualMeetingLauncher");
 const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
-const { ensureYdotool } = require("./src/helpers/ensureYdotool");
 const sidecarRegistry = require("./src/helpers/sidecarRegistry");
 const { reapStaleSidecars } = require("./src/helpers/sidecarReaper");
 const TransformManager = require("./src/helpers/transformManager");
@@ -201,59 +155,24 @@ let parakeetManager = null;
 let diarizationManager = null;
 let trayManager = null;
 let updateManager = null;
-let globeKeyManager = null;
 let windowsKeyManager = null;
-let linuxKeyManager = null;
 let textEditMonitor = null;
 let whisperCudaManager = null;
 let manualMeetingLauncher = null;
-let audioTapManager = null;
-let linuxPortalAudioManager = null;
 let windowsLoopbackAudioManager = null;
 let meetingAecManager = null;
 let transformManager = null;
 let ipcHandlers = null;
 let cliBridge = null;
-let globeKeyAlertShown = false;
-const WHISPER_WAKE_REWARM_DELAY_MS = 3000;
+let isShuttingDown = false;
 let wakeRewarmTimer = null;
+const WHISPER_WAKE_REWARM_DELAY_MS = 3000;
 
 
-// Set up PATH for production builds to find system tools (whisper.cpp, ffmpeg)
-function setupProductionPath() {
-  if (process.platform === "darwin" && process.env.NODE_ENV !== "development") {
-    const commonPaths = [
-      "/usr/local/bin",
-      "/opt/homebrew/bin",
-      "/usr/bin",
-      "/bin",
-      "/usr/sbin",
-      "/sbin",
-    ];
 
-    const currentPath = process.env.PATH || "";
-    const pathsToAdd = commonPaths.filter((p) => !currentPath.includes(p));
-
-    if (pathsToAdd.length > 0) {
-      process.env.PATH = `${currentPath}:${pathsToAdd.join(":")}`;
-    }
-  }
-}
 
 // Phase 1: Initialize managers + IPC handlers before window content loads
-// Best-effort cleanup of the orphaned portal restore-token file older builds wrote. See PR #904.
-const LINUX_RESTORE_TOKEN_FILENAME = ".linux-system-audio-restore-token.json";
-
-function cleanupOrphanedLinuxRestoreToken() {
-  if (process.platform !== "linux") return;
-  try {
-    const fs = require("fs");
-    fs.unlinkSync(path.join(app.getPath("userData"), LINUX_RESTORE_TOKEN_FILENAME));
-  } catch {}
-}
-
 function initializeCoreManagers() {
-  setupProductionPath();
 
   debugLogger = require("./src/helpers/debugLogger");
   debugLogger.ensureFileLogging();
@@ -269,9 +188,7 @@ function initializeCoreManagers() {
   databaseManager = new DatabaseManager();
   clipboardManager = new ClipboardManager();
   whisperManager = new WhisperManager();
-  if (process.platform !== "darwin") {
-    whisperCudaManager = new WhisperCudaManager();
-  }
+  whisperCudaManager = new WhisperCudaManager();
   parakeetManager = new ParakeetManager();
   diarizationManager = new DiarizationManager();
 
@@ -280,16 +197,11 @@ function initializeCoreManagers() {
   updateManager = new UpdateManager();
   updateManager.setWindowManager(windowManager);
   windowsKeyManager = new WindowsKeyManager();
-  linuxKeyManager = new LinuxKeyManager();
   textEditMonitor = new TextEditMonitor();
-  audioTapManager = new AudioTapManager();
-  linuxPortalAudioManager = new LinuxPortalAudioManager();
   windowsLoopbackAudioManager = new WindowsLoopbackAudioManager();
-  cleanupOrphanedLinuxRestoreToken();
   meetingAecManager = new MeetingAecManager();
   windowManager.textEditMonitor = textEditMonitor;
   windowManager.windowsKeyManager = windowsKeyManager;
-  windowManager.linuxKeyManager = linuxKeyManager;
 
   transformManager = new TransformManager(windowManager, clipboardManager);
 
@@ -304,12 +216,9 @@ function initializeCoreManagers() {
     windowManager,
     updateManager,
     windowsKeyManager,
-    linuxKeyManager,
     textEditMonitor,
     whisperCudaManager,
     manualMeetingLauncher,
-    audioTapManager,
-    linuxPortalAudioManager,
     windowsLoopbackAudioManager,
     meetingAecManager,
     getTrayManager: () => trayManager,
@@ -336,45 +245,8 @@ function registerSidecars() {
 // Phase 2: Non-critical setup after windows are visible
 function initializeDeferredManagers() {
   // Warm Windows loopback capability cache so first meeting start doesn't pay the probe spawn.
-  windowsLoopbackAudioManager.getCapability().catch(() => {});
-
-  ensureYdotool().catch((err) => {
-    require("./src/helpers/debugLogger").warn(
-      "ydotool setup error",
-      { error: err?.message },
-      "clipboard"
-    );
-  });
   clipboardManager.preWarmAccessibility();
   trayManager = new TrayManager();
-  globeKeyManager = new GlobeKeyManager();
-
-  if (process.platform === "darwin") {
-    globeKeyManager.on("error", (error) => {
-      if (globeKeyAlertShown) {
-        return;
-      }
-      globeKeyAlertShown = true;
-
-      const detailLines = [
-        error?.message || i18nMain.t("startup.globeHotkey.details.unknown"),
-        i18nMain.t("startup.globeHotkey.details.fallback"),
-      ];
-
-      if (process.env.NODE_ENV === "development") {
-        detailLines.push(i18nMain.t("startup.globeHotkey.details.devHint"));
-      } else {
-        detailLines.push(i18nMain.t("startup.globeHotkey.details.reinstallHint"));
-      }
-
-      dialog.showMessageBox({
-        type: "warning",
-        title: i18nMain.t("startup.globeHotkey.title"),
-        message: i18nMain.t("startup.globeHotkey.message"),
-        detail: detailLines.join("\n\n"),
-      });
-    });
-  }
 }
 
 
@@ -422,9 +294,6 @@ async function startApp() {
     environmentManager.savePanelStartPosition(position);
   });
 
-  if (process.platform === "darwin") {
-    app.setActivationPolicy("regular");
-  }
 
   // In development, wait for Vite dev server to be ready
   if (process.env.NODE_ENV === "development") {
@@ -597,316 +466,10 @@ async function startApp() {
   updateManager.setWindows(windowManager.mainWindow, windowManager.controlPanelWindow);
   updateManager.checkForUpdatesOnStartup();
 
-  if (process.platform === "darwin") {
-    const { isGlobeLikeHotkey, isMouseButtonHotkey } = require("./src/helpers/hotkeyManager");
-    let globeKeyDownTime = 0;
-    let globeKeyIsRecording = false;
-    let globeLastStopTime = 0;
-    const MIN_HOLD_DURATION_MS = 150;
-    const POST_STOP_COOLDOWN_MS = 300;
-
-    globeKeyManager.on("globe-down", async () => {
-      const currentHotkey = hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey();
-      const mainWindowLive = isLiveWindow(windowManager.mainWindow);
-      debugLogger?.debug("[Globe] globe-down received", {
-        currentHotkey,
-        mainWindowLive,
-        activationMode: mainWindowLive ? windowManager.getActivationMode() : "n/a",
-      });
-
-      // Forward to control panel for hotkey capture
-      if (isLiveWindow(windowManager.controlPanelWindow)) {
-        windowManager.controlPanelWindow.webContents.send("globe-key-pressed");
-      }
-
-      // Handle dictation if Globe/Fn is one of the dictation hotkeys
-      const dictationUsesGlobe = hotkeyManager.getSlotHotkeys("dictation").some(isGlobeLikeHotkey);
-      if (dictationUsesGlobe) {
-        if (mainWindowLive) {
-          // Capture target app PID and name BEFORE showing the overlay
-          if (textEditMonitor) textEditMonitor.captureTargetPid();
-          const activationMode = windowManager.getActivationMode();
-          if (activationMode === "push") {
-            const now = Date.now();
-            if (now - globeLastStopTime < POST_STOP_COOLDOWN_MS) {
-              debugLogger?.debug("[Globe] Ignored — cooldown active");
-              return;
-            }
-            windowManager.showDictationPanel();
-            const pressTime = now;
-            globeKeyDownTime = pressTime;
-            globeKeyIsRecording = false;
-            setTimeout(async () => {
-              if (globeKeyDownTime === pressTime && !globeKeyIsRecording) {
-                globeKeyIsRecording = true;
-                debugLogger?.debug("[Globe] Starting dictation (push hold)");
-                windowManager.sendStartDictation();
-              }
-            }, MIN_HOLD_DURATION_MS);
-          } else {
-            windowManager.sendToggleDictation();
-          }
-        } else {
-          debugLogger?.debug("[Globe] Ignored — mainWindow not live");
-        }
-      }
-
-      // Check agent and voice agent slots for Globe/Fn key
-      const agentUsesGlobe = hotkeyManager.getSlotHotkeys("agent").some(isGlobeLikeHotkey);
-      const voiceAgentUsesGlobe = hotkeyManager
-        .getSlotHotkeys("voiceAgent")
-        .some(isGlobeLikeHotkey);
-      if (agentUsesGlobe) {
-        windowManager.toggleAgentOverlay();
-      }
-      if (voiceAgentUsesGlobe) {
-        windowManager.sendToggleVoiceAgent();
-      }
-      if (!agentUsesGlobe && !voiceAgentUsesGlobe && !dictationUsesGlobe) {
-        debugLogger?.debug("[Globe] Ignored — hotkey is not GLOBE", { currentHotkey });
-      }
-    });
-
-    globeKeyManager.on("globe-up", async () => {
-      debugLogger?.debug("[Globe] globe-up received", { wasRecording: globeKeyIsRecording });
-
-      // Forward to control panel for hotkey capture (Fn key released)
-      if (isLiveWindow(windowManager.controlPanelWindow)) {
-        windowManager.controlPanelWindow.webContents.send("globe-key-released");
-      }
-
-      if (hotkeyManager.getSlotHotkeys("dictation").some(isGlobeLikeHotkey)) {
-        const activationMode = windowManager.getActivationMode();
-        if (activationMode === "push") {
-          globeKeyDownTime = 0;
-          globeLastStopTime = Date.now();
-          if (globeKeyIsRecording) {
-            globeKeyIsRecording = false;
-            debugLogger?.debug("[Globe] Stopping dictation (push release)");
-            windowManager.sendStopDictation();
-          }
-        }
-      }
-
-      // Fn release also stops compound push-to-talk for Fn+F-key hotkeys
-      windowManager.handleMacPushModifierUp("fn");
-    });
-
-    globeKeyManager.on("modifier-up", (modifier) => {
-      if (windowManager?.handleMacPushModifierUp) {
-        windowManager.handleMacPushModifierUp(modifier);
-      }
-    });
-
-    // Right-side single modifier handling (e.g., RightOption as hotkey)
-    let rightModDownTime = 0;
-    let rightModIsRecording = false;
-    let rightModLastStopTime = 0;
-    let rightModActiveKey = null;
-
-    globeKeyManager.on("right-modifier-down", async (modifier) => {
-      // Check agent and voice agent slots for right-modifier
-      if (hotkeyManager.slotHasHotkey("agent", modifier)) {
-        windowManager.toggleAgentOverlay();
-      }
-      if (hotkeyManager.slotHasHotkey("voiceAgent", modifier)) {
-        windowManager.sendToggleVoiceAgent();
-      }
-
-      if (!hotkeyManager.slotHasHotkey("dictation", modifier)) return;
-      if (!isLiveWindow(windowManager.mainWindow)) return;
-
-      const activationMode = windowManager.getActivationMode();
-      if (textEditMonitor) textEditMonitor.captureTargetPid();
-      if (activationMode === "push") {
-        if (rightModActiveKey && rightModActiveKey !== modifier) return;
-        const now = Date.now();
-        if (now - rightModLastStopTime < POST_STOP_COOLDOWN_MS) return;
-        windowManager.showDictationPanel();
-        const pressTime = now;
-        rightModActiveKey = modifier;
-        rightModDownTime = pressTime;
-        rightModIsRecording = false;
-        setTimeout(() => {
-          if (rightModDownTime === pressTime && !rightModIsRecording) {
-            rightModIsRecording = true;
-            windowManager.sendStartDictation();
-          }
-        }, MIN_HOLD_DURATION_MS);
-      } else {
-        windowManager.sendToggleDictation();
-      }
-    });
-
-    globeKeyManager.on("right-modifier-up", async (modifier) => {
-      if (hotkeyManager.slotHasHotkey("dictation", modifier)) {
-        if (!isLiveWindow(windowManager.mainWindow)) return;
-
-        const activationMode = windowManager.getActivationMode();
-        if (activationMode === "push" && (!rightModActiveKey || rightModActiveKey === modifier)) {
-          rightModActiveKey = null;
-          rightModDownTime = 0;
-          rightModLastStopTime = Date.now();
-          if (rightModIsRecording) {
-            rightModIsRecording = false;
-            windowManager.sendStopDictation();
-          } else {
-            windowManager.hideDictationPanel();
-          }
-        }
-      }
-
-      const rightModToBase = {
-        RightCommand: "command",
-        RightOption: "option",
-        RightControl: "control",
-        RightShift: "shift",
-      };
-      const baseMod = rightModToBase[modifier];
-      if (baseMod && windowManager?.handleMacPushModifierUp) {
-        windowManager.handleMacPushModifierUp(baseMod);
-      }
-    });
-
-    const syncSuppressedMouseButtons = () => {
-      const buttons = [];
-      for (const slotName of ["dictation", "agent", "voiceAgent"]) {
-        for (const hotkey of hotkeyManager.getSlotHotkeys(slotName)) {
-          if (isMouseButtonHotkey(hotkey)) buttons.push(hotkey);
-        }
-      }
-      globeKeyManager.setSuppressedMouseButtons(buttons);
-    };
-
-    // Mouse Button 4/5 handling (e.g., Logitech MX Master side buttons)
-    let mouseButtonDownTime = 0;
-    let mouseButtonIsRecording = false;
-    let mouseButtonLastStopTime = 0;
-    let mouseButtonActiveButton = null;
-
-    globeKeyManager.on("mouse-button-down", async (button) => {
-      if (hotkeyManager.isInListeningMode && hotkeyManager.isInListeningMode()) return;
-      if (!isMouseButtonHotkey(button)) return;
-
-      if (hotkeyManager.slotHasHotkey("agent", button)) {
-        windowManager.toggleAgentOverlay();
-      }
-      if (hotkeyManager.slotHasHotkey("voiceAgent", button)) {
-        windowManager.sendToggleVoiceAgent();
-      }
-
-      if (!hotkeyManager.slotHasHotkey("dictation", button)) return;
-      if (!isLiveWindow(windowManager.mainWindow)) return;
-
-      const activationMode = windowManager.getActivationMode();
-      if (textEditMonitor) textEditMonitor.captureTargetPid();
-
-      if (activationMode === "push") {
-        if (mouseButtonActiveButton && mouseButtonActiveButton !== button) return;
-        const now = Date.now();
-        if (now - mouseButtonLastStopTime < POST_STOP_COOLDOWN_MS) return;
-        windowManager.showDictationPanel();
-        const pressTime = now;
-        mouseButtonActiveButton = button;
-        mouseButtonDownTime = pressTime;
-        mouseButtonIsRecording = false;
-        setTimeout(() => {
-          if (mouseButtonDownTime === pressTime && !mouseButtonIsRecording) {
-            mouseButtonIsRecording = true;
-            windowManager.sendStartDictation();
-          }
-        }, MIN_HOLD_DURATION_MS);
-      } else {
-        windowManager.sendToggleDictation();
-      }
-    });
-
-    globeKeyManager.on("mouse-button-up", async (button) => {
-      if (hotkeyManager.isInListeningMode && hotkeyManager.isInListeningMode()) return;
-      if (!isMouseButtonHotkey(button)) return;
-
-      if (!hotkeyManager.slotHasHotkey("dictation", button)) return;
-      if (!isLiveWindow(windowManager.mainWindow)) return;
-
-      const activationMode = windowManager.getActivationMode();
-      if (
-        activationMode === "push" &&
-        (!mouseButtonActiveButton || mouseButtonActiveButton === button)
-      ) {
-        mouseButtonActiveButton = null;
-        mouseButtonDownTime = 0;
-        mouseButtonLastStopTime = Date.now();
-        if (mouseButtonIsRecording) {
-          mouseButtonIsRecording = false;
-          windowManager.sendStopDictation();
-        } else {
-          windowManager.hideDictationPanel();
-        }
-      }
-    });
-
-    syncSuppressedMouseButtons();
-    globeKeyManager.start();
-    hotkeyManager.once("hotkey-loaded", syncSuppressedMouseButtons);
-
-    ipcMain.on("hotkey-listening-mode-changed", (_event, enabled) => {
-      if (enabled) {
-        globeKeyManager.setSuppressedMouseButtons([]);
-      } else {
-        syncSuppressedMouseButtons();
-      }
-    });
-
-    // After starting globe-listener, check if accessibility is granted.
-    // If not, notify the control panel so it can prompt the user.
-    const checkAndNotifyAccessibility = () => {
-      if (!systemPreferences.isTrustedAccessibilityClient(false)) {
-        debugLogger.info("[Accessibility] macOS accessibility not trusted — notifying renderers");
-        if (isLiveWindow(windowManager.controlPanelWindow)) {
-          windowManager.controlPanelWindow.webContents.send("accessibility-missing");
-        }
-      }
-    };
-
-    // Check shortly after startup (give windows time to load)
-    setTimeout(checkAndNotifyAccessibility, 3000);
-
-    // Allow renderer to request an accessibility check (e.g. on sign-in).
-    // Also sends accessibility-missing events if untrusted.
-    ipcMain.handle("check-accessibility-trusted", () => {
-      const trusted = systemPreferences.isTrustedAccessibilityClient(false);
-      if (!trusted) {
-        checkAndNotifyAccessibility();
-      }
-      return trusted;
-    });
-
-    // Reset native key state when hotkey changes
-    ipcMain.on("hotkey-changed", (_event, _newHotkey) => {
-      globeKeyDownTime = 0;
-      globeKeyIsRecording = false;
-      globeLastStopTime = 0;
-      rightModDownTime = 0;
-      rightModIsRecording = false;
-      rightModLastStopTime = 0;
-      mouseButtonDownTime = 0;
-      mouseButtonIsRecording = false;
-      mouseButtonLastStopTime = 0;
-      syncSuppressedMouseButtons();
-    });
-  }
-
-  // Windows and Linux share the same native low-level key listener model: one hook
-  // process per watched key (Electron globalShortcut can't see modifier-only or
-  // right-side-modifier combos), routed to the owning slot here. macOS is handled
-  // separately above via globeKeyManager.
-  if (process.platform === "win32" || process.platform === "linux") {
-    const isWindows = process.platform === "win32";
-    const nativeKeyManager = isWindows ? windowsKeyManager : linuxKeyManager;
+  if (process.platform === "win32") {
+    const nativeKeyManager = windowsKeyManager;
     debugLogger.debug("[Push-to-Talk] Native key listener setup starting");
 
-    // Dictation supports push-to-talk and needs the overlay window; agent/meeting
-    // drive other windows (matching their globalShortcut callbacks and macOS).
     const dispatchNativeKeyDown = (key) => {
       if (hotkeyManager.slotHasHotkey("dictation", key)) {
         if (!isLiveWindow(windowManager.mainWindow)) return;
@@ -926,7 +489,6 @@ async function startApp() {
       }
     };
 
-    // Only dictation drives push-to-talk, so only its key-up matters.
     const dispatchNativeKeyUp = (key) => {
       if (!hotkeyManager.slotHasHotkey("dictation", key)) return;
       if (windowManager.winPushState?.active) {
@@ -944,7 +506,7 @@ async function startApp() {
 
     nativeKeyManager.on("error", (error) => {
       debugLogger.warn("[Push-to-Talk] Native key listener error", { error: error.message });
-      if (isWindows && isLiveWindow(windowManager.mainWindow)) {
+      if (isLiveWindow(windowManager.mainWindow)) {
         windowManager.mainWindow.webContents.send("windows-ptt-unavailable", {
           reason: "error",
           message: error.message,
@@ -956,7 +518,7 @@ async function startApp() {
       debugLogger.debug(
         "[Push-to-Talk] Native key listener unavailable - falling back to toggle mode"
       );
-      if (isWindows && isLiveWindow(windowManager.mainWindow)) {
+      if (isLiveWindow(windowManager.mainWindow)) {
         windowManager.mainWindow.webContents.send("windows-ptt-unavailable", {
           reason: "binary_not_found",
           message: i18nMain.t("windows.pttUnavailable"),
@@ -967,17 +529,6 @@ async function startApp() {
     nativeKeyManager.on("ready", () => {
       debugLogger.debug("[Push-to-Talk] Native key listener ready and listening");
     });
-
-    if (!isWindows) {
-      nativeKeyManager.on("permission-denied", () => {
-        debugLogger.warn(
-          "[Push-to-Talk] Linux key listener has no permission to access input devices"
-        );
-        if (isLiveWindow(windowManager.mainWindow)) {
-          windowManager.mainWindow.webContents.send("linux-ptt-permission-denied");
-        }
-      });
-    }
 
     const STARTUP_DELAY_MS = 3000;
     setTimeout(() => windowManager.reconcileNativeKeyListeners(), STARTUP_DELAY_MS);
@@ -1026,13 +577,6 @@ if (gotSingleInstanceLock) {
   app
     .whenReady()
     .then(() => {
-      // On Linux, --enable-transparent-visuals requires a short delay before creating
-      // windows to allow the compositor to set up the ARGB visual correctly.
-      // Without this delay, transparent windows flicker on both X11 and Wayland.
-      const delay = process.platform === "linux" ? 300 : 0;
-      return new Promise((resolve) => setTimeout(resolve, delay));
-    })
-    .then(() => {
       if (process.platform === "win32") {
         session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
           // Only the loopback audio track is used; the video source is
@@ -1064,59 +608,17 @@ if (gotSingleInstanceLock) {
     });
 
   app.on("window-all-closed", () => {
-    // Don't quit on macOS when all windows are closed
-    // The app should stay in the dock/menu bar
-    if (process.platform !== "darwin") {
-      app.quit();
-    }
-    // On macOS, keep the app running even without windows
+    app.quit();
   });
 
   app.on("browser-window-focus", (event, window) => {
-    // Only apply always-on-top to the dictation window, not the control panel
     if (windowManager && isLiveWindow(windowManager.mainWindow)) {
-      // Check if the focused window is the dictation window
       if (window === windowManager.mainWindow) {
         windowManager.enforceMainWindowOnTop();
       }
     }
-
-    // Control panel doesn't need any special handling on focus
-    // It should behave like a normal window
   });
 
-  app.on("activate", () => {
-    // On macOS, re-create windows when dock icon is clicked
-    if (BrowserWindow.getAllWindows().length === 0) {
-      if (windowManager) {
-        windowManager.createMainWindow();
-        windowManager.createControlPanelWindow();
-      }
-    } else {
-      // Show control panel when dock icon is clicked (most common user action)
-      if (windowManager && isLiveWindow(windowManager.controlPanelWindow)) {
-        // Ensure dock icon is visible when control panel opens
-        if (process.platform === "darwin" && app.dock) {
-          app.dock.show();
-        }
-        if (windowManager.controlPanelWindow.isMinimized()) {
-          windowManager.controlPanelWindow.restore();
-        }
-        windowManager.controlPanelWindow.show();
-        windowManager.controlPanelWindow.focus();
-      } else if (windowManager) {
-        // If control panel doesn't exist, create it
-        windowManager.createControlPanelWindow();
-      }
-
-      // Ensure dictation panel maintains its always-on-top status
-      if (windowManager && isLiveWindow(windowManager.mainWindow)) {
-        windowManager.enforceMainWindowOnTop();
-      }
-    }
-  });
-
-  let isShuttingDown = false;
   app.on("before-quit", (event) => {
     if (isShuttingDown) return;
     isShuttingDown = true;
@@ -1154,12 +656,8 @@ function performSyncTeardown() {
   } else {
     globalShortcut.unregisterAll();
   }
-  if (globeKeyManager) globeKeyManager.stop();
   if (windowsKeyManager) windowsKeyManager.stop();
-  if (linuxKeyManager) linuxKeyManager.stop();
 
-  if (audioTapManager) audioTapManager.stop().catch(() => {});
-  if (linuxPortalAudioManager) linuxPortalAudioManager.stop().catch(() => {});
   if (windowsLoopbackAudioManager) windowsLoopbackAudioManager.stop().catch(() => {});
   if (meetingAecManager) meetingAecManager.stop().catch(() => {});
   if (ipcHandlers) ipcHandlers._cleanupTextEditMonitor();

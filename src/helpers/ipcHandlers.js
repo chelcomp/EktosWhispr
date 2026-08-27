@@ -9,8 +9,7 @@ const { BYOK_API_KEYS } = require("../config/secretKeys");
 const { classifyAndLog } = require("./networkErrors");
 const { classifyLocalWhisperError } = require("./whisperErrorClassifier");
 const whisperBinaryInstaller = require("./whisperBinaryInstaller");
-const GnomeShortcutManager = require("./gnomeShortcut");
-const HyprlandShortcutManager = require("./hyprlandShortcut");
+
 const { i18nMain, changeLanguage } = require("./i18nMain");
 const AudioStorageManager = require("./audioStorage");
 const { decideAudioCleanup, shouldRunImmediateCleanup } = require("./audioCleanupPolicy");
@@ -379,13 +378,10 @@ class IPCHandlers {
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
     this.windowsKeyManager = managers.windowsKeyManager;
-    this.linuxKeyManager = managers.linuxKeyManager;
     this.textEditMonitor = managers.textEditMonitor;
     this.getTrayManager = managers.getTrayManager;
     this.whisperCudaManager = managers.whisperCudaManager;
     this.manualMeetingLauncher = managers.manualMeetingLauncher;
-    this.audioTapManager = managers.audioTapManager;
-    this.linuxPortalAudioManager = managers.linuxPortalAudioManager;
     this.windowsLoopbackAudioManager = managers.windowsLoopbackAudioManager;
     this.meetingAecManager = managers.meetingAecManager;
     this.sessionId = crypto.randomUUID();
@@ -1019,13 +1015,9 @@ class IPCHandlers {
     });
 
     ipcMain.handle("hide-window", () => {
-      if (process.platform === "darwin") {
-        this.windowManager.hideDictationPanel();
-        if (app.dock) app.dock.show();
-      } else {
-        this.windowManager.hideDictationPanel();
-      }
+      this.windowManager.hideDictationPanel();
     });
+
 
     ipcMain.handle("show-dictation-panel", () => {
       this.windowManager.showDictationPanel();
@@ -2060,43 +2052,34 @@ class IPCHandlers {
       const mainWindow = this.windowManager?.mainWindow;
       const targetPid = this.textEditMonitor?.lastTargetPid || null;
 
-      // macOS: app name was captured at hotkey time via NSWorkspace (before the
-      // overlay appeared). Windows/Linux: detect after blur — see below.
       let detectedApp =
         activeAppCapture.getLastAppName() || this.textEditMonitor?.lastTargetAppName || null;
 
       // Activating the target by PID is more reliable than hide()'s implicit
       // focus hand-off for Chromium apps like Claude desktop and Brave (#668).
-      let activated = false;
-      if (process.platform === "darwin" && this.textEditMonitor) {
-        activated = await this.textEditMonitor.activateTargetPid();
-      }
+      const activated = false;
+
 
       const mainWindowFocused =
         !activated && mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused();
 
       if (mainWindowFocused) {
-        if (process.platform === "darwin") {
-          mainWindow.hide();
-          await new Promise((resolve) => setTimeout(resolve, 120));
-          mainWindow.showInactive();
-        } else {
-          // Window has focus — blur it and detect the new foreground concurrently.
-          // After blur() the target app becomes OS foreground within ~20ms, so
-          // detectAsync() resolves inside the existing 80ms wait: zero added latency.
-          mainWindow.blur();
-          const [, freshApp] = await Promise.all([
-            new Promise((resolve) => setTimeout(resolve, 80)),
-            activeAppCapture.detectAsync(),
-          ]);
-          if (freshApp) detectedApp = freshApp;
-        }
-      } else if (process.platform !== "darwin") {
+        // Window has focus — blur it and detect the new foreground concurrently.
+        // After blur() the target app becomes OS foreground within ~20ms, so
+        // detectAsync() resolves inside the existing 80ms wait: zero added latency.
+        mainWindow.blur();
+        const [, freshApp] = await Promise.all([
+          new Promise((resolve) => setTimeout(resolve, 80)),
+          activeAppCapture.detectAsync(),
+        ]);
+        if (freshApp) detectedApp = freshApp;
+      } else {
         // Overlay is shown but not focused (tap-to-talk): the target app is already
         // the OS foreground. Detect directly — no blur needed.
         const freshApp = await activeAppCapture.detectAsync();
         if (freshApp) detectedApp = freshApp;
       }
+
 
       debugLogger.info("[Paste] Pasting to app", { activeApp: detectedApp });
 
@@ -2303,15 +2286,6 @@ class IPCHandlers {
       }
     });
 
-    ipcMain.handle("check-accessibility-permission", async (_event, silent = false) => {
-      return this.clipboardManager.checkAccessibilityPermissions(silent);
-    });
-
-    // Passes `true` to isTrustedAccessibilityClient to trigger the macOS system prompt
-    ipcMain.handle("prompt-accessibility-permission", async () => {
-      if (process.platform !== "darwin") return true;
-      return systemPreferences.isTrustedAccessibilityClient(true);
-    });
 
     ipcMain.handle("read-clipboard", async (event) => {
       return this.clipboardManager.readClipboard();
@@ -3184,11 +3158,6 @@ class IPCHandlers {
           this.windowsKeyManager.stop();
         }
 
-        // On Linux, stop the Linux key listener
-        if (process.platform === "linux" && this.linuxKeyManager) {
-          debugLogger.log("[IPC] Stopping Linux key listener for hotkey capture mode");
-          this.linuxKeyManager.stop();
-        }
 
         // On GNOME, unregister all native keybindings during capture
         if (hotkeyManager.isUsingGnome() && hotkeyManager.gnomeManager) {
@@ -3218,10 +3187,8 @@ class IPCHandlers {
 
     ipcMain.handle("get-hotkey-mode-info", async () => {
       const isUsingNativeShortcut = this.windowManager.isUsingNativeShortcutHotkeys();
-      const supportsPushToTalk =
-        process.platform === "linux"
-          ? this.linuxKeyManager?.isAvailable?.() === true
-          : !isUsingNativeShortcut;
+      const supportsPushToTalk = !isUsingNativeShortcut;
+
 
       return {
         isUsingGnome: this.windowManager.isUsingGnomeHotkeys(),
@@ -3232,10 +3199,6 @@ class IPCHandlers {
       };
     });
 
-    ipcMain.handle("get-hyprland-config-status", async () => {
-      if (!this.windowManager.isUsingHyprlandHotkeys()) return null;
-      return this.windowManager.getHyprlandConfigStatus();
-    });
 
     ipcMain.handle("register-cancel-hotkey", async (event, key) => {
       const hotkeyManager = this.windowManager.hotkeyManager;
@@ -4366,24 +4329,14 @@ class IPCHandlers {
     });
 
     const SYSTEM_SETTINGS_URLS = {
-      darwin: {
-        microphone: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
-        sound: "x-apple.systempreferences:com.apple.preference.sound?input",
-        accessibility:
-          "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
-        systemAudio:
-          "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
-      },
-      win32: {
-        microphone: "ms-settings:privacy-microphone",
-        sound: "ms-settings:sound",
-      },
+      microphone: "ms-settings:privacy-microphone",
+      sound: "ms-settings:sound",
     };
 
+
     const openSystemSettings = async (settingType) => {
-      const platform = process.platform;
-      const urls = SYSTEM_SETTINGS_URLS[platform];
-      const url = urls?.[settingType];
+      const url = SYSTEM_SETTINGS_URLS[settingType];
+
 
       if (!url) {
         // Platform doesn't support this settings URL
@@ -4434,20 +4387,13 @@ class IPCHandlers {
     });
 
     ipcMain.handle("request-microphone-access", async () => {
-      if (process.platform !== "darwin") {
-        return { granted: true, status: "granted" };
-      }
-      const granted = await systemPreferences.askForMediaAccess("microphone");
-      return { granted };
+      return { granted: true, status: "granted" };
     });
 
     ipcMain.handle("check-microphone-access", () => {
-      if (process.platform !== "darwin") {
-        return { granted: true, status: "granted" };
-      }
-      const status = systemPreferences.getMediaAccessStatus("microphone");
-      return { granted: status === "granted", status };
+      return { granted: true, status: "granted" };
     });
+
 
     const buildSystemAudioAccess = (partial = {}) => ({
       granted: false,
@@ -4464,36 +4410,6 @@ class IPCHandlers {
       ...partial,
     });
 
-    const getLinuxSystemAudioAccess = async () => {
-      const capability = await this.linuxPortalAudioManager?.getCapability().catch((error) => ({
-        available: false,
-        supportsPersistentGrant: false,
-        supportsPersistentPortalGrant: false,
-        supportsSystemAudio: false,
-        supportsNativeCapture: false,
-        portalVersion: null,
-        error: error.message,
-      }));
-      const available = !!capability?.available;
-      const supportsSystemAudio = !!capability?.supportsSystemAudio;
-      const supportsNativeCapture = !!capability?.supportsNativeCapture;
-      const granted = available && supportsSystemAudio && supportsNativeCapture;
-      const helperError =
-        typeof capability?.error === "string" &&
-        !capability.error.includes("helper binary not found")
-          ? capability.error
-          : undefined;
-
-      return buildSystemAudioAccess({
-        granted,
-        status: granted ? "granted" : "unknown",
-        mode: granted ? "loopback" : "unsupported",
-        supportsNativeCapture,
-        strategy: granted ? "pipewire-loopback" : "unsupported",
-        portalVersion: capability?.portalVersion ?? null,
-        error: helperError,
-      });
-    };
 
     // System audio is always capturable on Windows: via the native WASAPI
     // process-loopback helper when available (hears every output device),
@@ -4513,66 +4429,14 @@ class IPCHandlers {
       });
     };
 
-    const getSystemAudioAccess = async () => {
-      if (process.platform === "win32") {
-        return getWindowsSystemAudioAccess();
-      }
-
-      if (process.platform === "linux") {
-        return getLinuxSystemAudioAccess();
-      }
-
-      if (!this.audioTapManager?.isSupported()) {
-        return buildSystemAudioAccess();
-      }
-
-      const result = this.audioTapManager.checkAccess();
-      return buildSystemAudioAccess({
-        granted: result.granted,
-        status: result.status,
-        mode: "native",
-        strategy: "native",
-      });
-    };
+    const getSystemAudioAccess = async () => getWindowsSystemAudioAccess();
 
     ipcMain.handle("check-system-audio-access", () => getSystemAudioAccess());
 
     ipcMain.handle("request-system-audio-access", async () => {
-      if (process.platform === "win32") {
-        return getWindowsSystemAudioAccess();
-      }
-
-      if (process.platform === "linux") {
-        return getLinuxSystemAudioAccess();
-      }
-
-      if (!this.audioTapManager?.isSupported()) {
-        return buildSystemAudioAccess();
-      }
-
-      try {
-        const result = await this.audioTapManager.requestAccess();
-        if (result.granted) {
-          return buildSystemAudioAccess({
-            granted: true,
-            status: "granted",
-            mode: "native",
-            strategy: "native",
-          });
-        }
-      } catch {
-        // Falls through to opening System Settings
-      }
-
-      await openSystemSettings("systemAudio");
-      const status = this.audioTapManager.getPermissionStatus();
-      return buildSystemAudioAccess({
-        granted: false,
-        status,
-        mode: "native",
-        strategy: "native",
-      });
+      return getWindowsSystemAudioAccess();
     });
+
 
     ipcMain.handle("open-whisper-models-folder", async () => {
       try {
@@ -4588,25 +4452,6 @@ class IPCHandlers {
       }
     });
 
-    ipcMain.handle("get-ydotool-status", () => {
-      const { getYdotoolStatus } = require("./ensureYdotool");
-      const { execFileSync } = require("child_process");
-      const status = getYdotoolStatus();
-      const isKde = (process.env.XDG_CURRENT_DESKTOP || "").toLowerCase().includes("kde");
-      let hasXclip = false;
-      let hasXsel = false;
-      if (isKde) {
-        try {
-          execFileSync("which", ["xclip"], { timeout: 1000 });
-          hasXclip = true;
-        } catch {}
-        try {
-          execFileSync("which", ["xsel"], { timeout: 1000 });
-          hasXsel = true;
-        } catch {}
-      }
-      return { ...status, isKde, hasXclip, hasXsel };
-    });
 
     ipcMain.handle("get-debug-state", async () => {
       try {
@@ -5276,11 +5121,10 @@ class IPCHandlers {
     };
 
     const getMeetingSystemAudioCapabilityMode = () => {
-      if (this.audioTapManager?.isSupported()) return "native";
       if (process.platform === "win32") return "loopback";
-      if (process.platform === "linux") return "loopback";
       return "unsupported";
     };
+
 
     const getMeetingSystemAudioMode = () => getMeetingSystemAudioCapabilityMode();
 
@@ -5294,18 +5138,11 @@ class IPCHandlers {
         return { mode, strategy: "native" };
       }
 
-      if (process.platform === "linux") {
-        const linuxAccess = await getLinuxSystemAudioAccess();
-        return {
-          mode: linuxAccess.mode,
-          strategy: linuxAccess.strategy || "unsupported",
-        };
-      }
-
       if (process.platform === "win32") {
         const windowsAccess = await getWindowsSystemAudioAccess();
         return { mode: windowsAccess.mode, strategy: windowsAccess.strategy };
       }
+
 
       return { mode, strategy: "unsupported" };
     };
@@ -5818,12 +5655,6 @@ class IPCHandlers {
 
     // Simplified for offline build: removes cloud streaming teardown.
     const rollbackMeetingTranscriptionStart = async () => {
-      if (this.audioTapManager) {
-        await this.audioTapManager.stop().catch(() => {});
-      }
-      if (this.linuxPortalAudioManager) {
-        await this.linuxPortalAudioManager.stop().catch(() => {});
-      }
       if (this.windowsLoopbackAudioManager) {
         await this.windowsLoopbackAudioManager.stop().catch(() => {});
       }
@@ -5917,25 +5748,6 @@ class IPCHandlers {
       systemAudioStrategy,
       context
     ) => {
-      if (systemAudioMode === "native") {
-        try {
-          await startManagedMeetingSystemAudio(
-            event,
-            this.audioTapManager,
-            "macOS system audio tap warning"
-          );
-          return { systemAudioMode, systemAudioStrategy };
-        } catch (error) {
-          debugLogger.warn(
-            `Native system audio tap failed ${context}, falling back to mic-only`,
-            { error: error.message },
-            "meeting"
-          );
-          await fallBackToMicOnly("native");
-          return { systemAudioMode: "unsupported", systemAudioStrategy: "unsupported" };
-        }
-      }
-
       if (systemAudioStrategy === "wasapi-loopback") {
         try {
           await startManagedMeetingSystemAudio(
@@ -5954,26 +5766,10 @@ class IPCHandlers {
         }
       }
 
-      if (systemAudioStrategy !== "pipewire-loopback") {
-        return { systemAudioMode, systemAudioStrategy };
-      }
-
-      try {
-        await startManagedMeetingSystemAudio(
-          event,
-          this.linuxPortalAudioManager,
-          "Linux PipeWire system audio warning"
-        );
-        return { systemAudioMode, systemAudioStrategy };
-      } catch (error) {
-        debugLogger.warn(
-          `Linux PipeWire helper failed ${context}, falling back to mic-only`,
-          { error: error.message },
-          "meeting"
-        );
-        await fallBackToMicOnly("PipeWire");
-        return { systemAudioMode: "unsupported", systemAudioStrategy: "unsupported" };
-      }
+      // Anything other than wasapi-loopback falls through with the renderer's
+      // selected mode/strategy (typically "loopback" via the renderer's own
+      // Chromium loopback capture).
+      return { systemAudioMode, systemAudioStrategy };
     };
 
     // Pre-warm: for local provider this is a no-op; kept for renderer compat.
@@ -6081,17 +5877,10 @@ class IPCHandlers {
     // Simplified for offline build: only the meetingLocalMode path is kept.
     ipcMain.handle("meeting-transcription-stop", async () => {
       try {
-        if (this.audioTapManager) {
-          await this.audioTapManager.stop();
-        }
-        if (this.linuxPortalAudioManager) {
-          await this.linuxPortalAudioManager.stop().catch(() => {});
-        }
         if (this.windowsLoopbackAudioManager) {
           await this.windowsLoopbackAudioManager.stop().catch(() => {});
         }
 
-        flushPendingMeetingMicChunks(true);
         await stopMeetingAec();
 
         const liveSpeakerState = await stopLiveSpeakerIdentification().catch(() => null);

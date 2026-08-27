@@ -101,10 +101,7 @@ class ParakeetWsServer {
     const prefix = "sherpa-onnx-ws";
 
     if (process.env.SHERPA_ONNX_CUDA_ENABLED === "true") {
-      const cudaName =
-        process.platform === "win32"
-          ? `${prefix}-${platformArch}-cuda.exe`
-          : `${prefix}-${platformArch}-cuda`;
+      const cudaName = `${prefix}-${platformArch}-cuda.exe`;
       const cudaResolved = resolveBinaryPath(cudaName);
       if (cudaResolved) {
         this.cachedBinaryPaths[runtime] = cudaResolved;
@@ -112,9 +109,8 @@ class ParakeetWsServer {
       }
       debugLogger.warn("CUDA binary not found, falling back to CPU binary", { cudaName });
     }
+    const binaryName = `${prefix}-${platformArch}.exe`;
 
-    const binaryName =
-      process.platform === "win32" ? `${prefix}-${platformArch}.exe` : `${prefix}-${platformArch}`;
 
     const resolved = resolveBinaryPath(binaryName);
     if (resolved) this.cachedBinaryPaths[runtime] = resolved;

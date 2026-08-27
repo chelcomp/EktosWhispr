@@ -410,15 +410,11 @@ export interface ParakeetDiagnosticsResult {
 }
 
 export interface PasteToolsResult {
-  platform: "darwin" | "win32" | "linux";
+  platform: "win32";
   available: boolean;
   method: string | null;
   requiresPermission: boolean;
-  isWayland?: boolean;
-  xwaylandAvailable?: boolean;
   terminalAware?: boolean;
-  hasNativeBinary?: boolean;
-  hasUinput?: boolean;
   tools?: string[];
   recommendedInstall?: string;
 }
@@ -830,8 +826,6 @@ declare global {
       }) => Promise<void>;
 
       // Clipboard operations
-      checkAccessibilityPermission: (silent?: boolean) => Promise<boolean>;
-      promptAccessibilityPermission: () => Promise<boolean>;
       readClipboard: () => Promise<string>;
       writeClipboard: (text: string) => Promise<{ success: boolean }>;
       checkPasteTools: () => Promise<PasteToolsResult>;
@@ -1094,31 +1088,9 @@ declare global {
       updateHotkey: (key: string) => Promise<{ success: boolean; message: string }>;
       setHotkeyListeningMode?: (enabled: boolean) => Promise<{ success: boolean }>;
       getHotkeyModeInfo?: () => Promise<{
-        isUsingGnome: boolean;
-        isUsingHyprland: boolean;
         isUsingNativeShortcut: boolean;
         supportsPushToTalk: boolean;
       }>;
-      getHyprlandConfigStatus?: () => Promise<{ canWrite: boolean; path: string } | null>;
-
-      // Wayland paste diagnostics
-      getYdotoolStatus?: () => Promise<{
-        isLinux: boolean;
-        isWayland: boolean;
-        hasYdotool: boolean;
-        hasYdotoold: boolean;
-        daemonRunning: boolean;
-        hasService: boolean;
-        hasUinput: boolean;
-        hasUdevRule: boolean;
-        hasGroup: boolean;
-        isNixOS: boolean;
-        allGood: boolean;
-      }>;
-
-      // Globe key listener for hotkey capture (macOS only)
-      onGlobeKeyPressed?: (callback: () => void) => () => void;
-      onGlobeKeyReleased?: (callback: () => void) => () => void;
 
       // Hotkey registration events
       onHotkeyFallbackUsed?: (
@@ -1129,14 +1101,10 @@ declare global {
       ) => () => void;
       onSettingUpdated?: (callback: (data: { key: string; value: unknown }) => void) => () => void;
       onDictationKeyActive?: (callback: (key: string) => void) => () => void;
-      onLinuxPttPermissionDenied?: (callback: () => void) => () => void;
 
-      // Settings shortcut (Cmd+, / Ctrl+,)
+      // Settings shortcut (Ctrl+,)
       onShowSettings?: (callback: () => void) => () => void;
 
-      // Accessibility permission events (macOS)
-      onAccessibilityMissing?: (callback: () => void) => () => void;
-      checkAccessibilityTrusted?: () => Promise<boolean>;
 
       // Gemini API key management
       getGeminiKey: () => Promise<string | null>;

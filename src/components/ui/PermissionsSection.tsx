@@ -23,7 +23,6 @@ export default function PermissionsSection({
 }: PermissionsSectionProps) {
   const { t } = useTranslation();
   const platform = permissions.pasteToolsInfo?.platform;
-  const isMacOS = platform === "darwin";
   const shouldShowSystemAudioPermission = canManageSystemAudioInApp(systemAudio);
 
   return (
@@ -38,22 +37,6 @@ export default function PermissionsSection({
           buttonText={t("onboarding.permissions.grantAccess")}
         />
 
-        {isMacOS && (
-          <PermissionCard
-            icon={Shield}
-            title={t("onboarding.permissions.accessibilityTitle")}
-            description={t("onboarding.permissions.accessibilityDescription")}
-            granted={permissions.accessibilityPermissionGranted}
-            onRequest={permissions.requestAccessibilityPermission}
-            buttonText={t("onboarding.permissions.grantAccess")}
-            badge={t("onboarding.permissions.recommended")}
-            hint={
-              permissions.accessibilityTroubleshooting
-                ? t("onboarding.permissions.accessibilityTroubleshooting")
-                : undefined
-            }
-          />
-        )}
 
         {shouldShowSystemAudioPermission && (
           <PermissionCard
@@ -80,15 +63,6 @@ export default function PermissionsSection({
         />
       )}
 
-      {platform === "linux" &&
-        permissions.pasteToolsInfo &&
-        !permissions.pasteToolsInfo.available && (
-          <PasteToolsInfo
-            pasteToolsInfo={permissions.pasteToolsInfo}
-            isChecking={permissions.isCheckingPasteTools}
-            onCheck={permissions.checkPasteToolsAvailability}
-          />
-        )}
     </>
   );
 }

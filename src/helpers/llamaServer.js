@@ -284,7 +284,7 @@ class LlamaServerManager {
         windowsHide: true,
         cwd: getSafeTempDir(),
         env,
-        detached: process.platform !== "win32",
+        detached: false,
       });
       sidecarPidFile.write("llama", this.process.pid);
 

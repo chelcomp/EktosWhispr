@@ -37,7 +37,7 @@ The short version:
 | Run dev     | `npm run dev`                                                                     |
 | Lint        | `npm run lint`                                                                    |
 | Format      | `npm run format`                                                                  |
-| Build       | `npm run build` (or `build:mac` / `build:win` / `build:linux`)                    |
+| Build       | `npm run build` (or `build:win`)                                                       |
 
 Platform-specific setup, model downloads, and packaging details are in
 [`README.md`](../README.md) and [`docs/guides/LOCAL_WHISPER_SETUP.md`](../docs/guides/LOCAL_WHISPER_SETUP.md).

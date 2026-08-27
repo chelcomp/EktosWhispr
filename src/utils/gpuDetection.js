@@ -5,10 +5,6 @@ let cachedGpuInfo = null;
 function detectNvidiaGpu() {
   if (cachedGpuInfo) return Promise.resolve(cachedGpuInfo);
 
-  if (process.platform === "darwin") {
-    cachedGpuInfo = { hasNvidiaGpu: false };
-    return Promise.resolve(cachedGpuInfo);
-  }
 
   return new Promise((resolve) => {
     execFile(
@@ -49,11 +45,6 @@ let cachedGpuList = null;
 function listNvidiaGpus() {
   if (cachedGpuList) return Promise.resolve(cachedGpuList);
 
-  if (process.platform === "darwin") {
-    cachedGpuList = [];
-    return Promise.resolve(cachedGpuList);
-  }
-
   return new Promise((resolve) => {
     execFile(
       "nvidia-smi",
@@ -93,10 +84,6 @@ let cachedIntelGpuInfo = null;
 
 async function detectIntelGpu() {
   if (cachedIntelGpuInfo !== null) return cachedIntelGpuInfo;
-  if (process.platform === "darwin") {
-    cachedIntelGpuInfo = { hasIntelGpu: false };
-    return cachedIntelGpuInfo;
-  }
   try {
     const gpuInfo = await app.getGPUInfo("complete");
     const devices = gpuInfo.gpuDevice || [];

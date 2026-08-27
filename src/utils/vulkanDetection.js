@@ -29,11 +29,6 @@ function parseDeviceName(gpuInfo, activeGpu) {
 async function detectVulkanGpu() {
   if (cachedResult) return cachedResult;
 
-  if (process.platform === "darwin") {
-    cachedResult = { available: false };
-    return cachedResult;
-  }
-
   try {
     const gpuInfo = await app.getGPUInfo("complete");
     const activeGpu = gpuInfo.gpuDevice?.find((d) => d.active) || gpuInfo.gpuDevice?.[0];

@@ -28,26 +28,13 @@ const MAX_REDIRECTS = 5;
 
 // Mirrors scripts/download-whisper-cpp.js's BINARIES map.
 const BINARIES = {
-  "darwin-arm64": {
-    zipName: "whisper-server-darwin-arm64.zip",
-    binaryName: "whisper-server-darwin-arm64",
-    outputName: "whisper-server-darwin-arm64",
-  },
-  "darwin-x64": {
-    zipName: "whisper-server-darwin-x64.zip",
-    binaryName: "whisper-server-darwin-x64",
-    outputName: "whisper-server-darwin-x64",
-  },
+
   "win32-x64": {
     zipName: "whisper-server-win32-x64-cpu.zip",
     binaryName: "whisper-server-win32-x64-cpu.exe",
     outputName: "whisper-server-win32-x64.exe",
   },
-  "linux-x64": {
-    zipName: "whisper-server-linux-x64-cpu.zip",
-    binaryName: "whisper-server-linux-x64-cpu",
-    outputName: "whisper-server-linux-x64",
-  },
+
 };
 
 function fetchJson(url, redirectCount = 0) {

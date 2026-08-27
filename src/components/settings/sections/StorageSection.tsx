@@ -385,31 +385,18 @@ export default function StorageSection({
             buttonText={t("settingsPage.permissions.grantAccess")}
           />
 
-          {(platform === "darwin" || canManageSystemAudioInApp(systemAudio)) && (
-            <>
-              {platform === "darwin" && (
-                <PermissionCard
-                  icon={Shield}
-                  title={t("settingsPage.permissions.accessibilityTitle")}
-                  description={t("settingsPage.permissions.accessibilityDescription")}
-                  granted={permissionsHook.accessibilityPermissionGranted}
-                  onRequest={permissionsHook.requestAccessibilityPermission}
-                  buttonText={t("settingsPage.permissions.grantAccess")}
-                />
-              )}
-              {canManageSystemAudioInApp(systemAudio) && (
-                <PermissionCard
-                  icon={Monitor}
-                  title={t("settingsPage.permissions.systemAudioTitle")}
-                  description={t("settingsPage.permissions.systemAudioDescription")}
-                  granted={systemAudio.granted}
-                  onRequest={systemAudio.request}
-                  buttonText={t("settingsPage.permissions.grantAccess")}
-                  badge={t("settingsPage.permissions.optional")}
-                />
-              )}
-            </>
+          {canManageSystemAudioInApp(systemAudio) && (
+            <PermissionCard
+              icon={Monitor}
+              title={t("settingsPage.permissions.systemAudioTitle")}
+              description={t("settingsPage.permissions.systemAudioDescription")}
+              granted={systemAudio.granted}
+              onRequest={systemAudio.request}
+              buttonText={t("settingsPage.permissions.grantAccess")}
+              badge={t("settingsPage.permissions.optional")}
+            />
           )}
+
         </div>
 
         {!permissionsHook.micPermissionGranted && permissionsHook.micPermissionError && (
@@ -420,42 +407,7 @@ export default function StorageSection({
           />
         )}
 
-        {platform === "linux" &&
-          permissionsHook.pasteToolsInfo &&
-          !permissionsHook.pasteToolsInfo.available && (
-            <PasteToolsInfo
-              pasteToolsInfo={permissionsHook.pasteToolsInfo}
-              isChecking={permissionsHook.isCheckingPasteTools}
-              onCheck={permissionsHook.checkPasteToolsAvailability}
-            />
-          )}
 
-        {platform === "darwin" && (
-          <div className="mt-5">
-            <p className="text-xs font-medium text-foreground mb-3">
-              {t("settingsPage.permissions.troubleshootingTitle")}
-            </p>
-            <SettingsPanel>
-              <SettingsPanelRow>
-                <SettingsRow
-                  label={t("settingsPage.permissions.resetAccessibility.label")}
-                  description={t(
-                    "settingsPage.permissions.resetAccessibility.rowDescription"
-                  )}
-                >
-                  <Button
-                    onClick={resetAccessibilityPermissions}
-                    variant="ghost"
-                    size="sm"
-                    className="text-foreground/70 hover:text-foreground"
-                  >
-                    {t("settingsPage.permissions.troubleshoot")}
-                  </Button>
-                </SettingsRow>
-              </SettingsPanelRow>
-            </SettingsPanel>
-          </div>
-        )}
       </div>
     </div>
   );

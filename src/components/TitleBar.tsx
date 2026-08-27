@@ -18,11 +18,6 @@ export default function TitleBar({
   actions,
   center,
 }: TitleBarProps) {
-  const platform =
-    typeof window !== "undefined" && window.electronAPI?.getPlatform
-      ? window.electronAPI.getPlatform()
-      : "darwin";
-
   return (
     <div className={`bg-background border-b border-border select-none ${className}`}>
       <div
@@ -38,20 +33,11 @@ export default function TitleBar({
           </div>
         )}
         <div className="flex items-center gap-2" style={{ WebkitAppRegion: "no-drag" }}>
-          {platform !== "darwin" ? (
-            actions
-          ) : (
-            <>
-              {showTitle && title && (
-                <h1 className="text-sm font-semibold text-foreground">{title}</h1>
-              )}
-              {children}
-            </>
-          )}
+          {actions}
         </div>
 
         <div className="flex items-center gap-2" style={{ WebkitAppRegion: "no-drag" }}>
-          {platform !== "darwin" ? <WindowControls /> : actions}
+          <WindowControls />
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ import {
   parseHotkeyList,
 } from "./hotkeys";
 
-export type Platform = "darwin" | "win32" | "linux";
+export type Platform = "win32";
 
 export type ValidationErrorCode =
   | "TOO_MANY_KEYS"
@@ -69,56 +69,6 @@ const SPECIAL_KEYS = new Set(
   ].concat(Array.from({ length: 24 }, (_, i) => `F${i + 1}`))
 );
 
-const MAC_RESERVED_SHORTCUTS = [
-  "Command+C",
-  "Command+V",
-  "Command+X",
-  "Command+Z",
-  "Command+Shift+Z",
-  "Command+A",
-  "Command+Q",
-  "Command+W",
-  "Command+R",
-  "Command+T",
-  "Command+S",
-  "Command+P",
-  "Command+N",
-  "Command+M",
-  "Command+H",
-  "Command+F",
-  "Command+G",
-  "Command+Shift+G",
-  "Command+,",
-  "Command+Left",
-  "Command+Right",
-  "Command+Up",
-  "Command+Down",
-  "Command+Shift+Left",
-  "Command+Shift+Right",
-  "Command+Shift+Up",
-  "Command+Shift+Down",
-  "Command+Control+F",
-  "Command+Space",
-  "Command+Alt+Space",
-  "Command+Shift+3",
-  "Command+Shift+4",
-  "Command+Shift+5",
-  "Command+Alt+Esc",
-  "Command+Alt+D",
-  "Command+Delete",
-  "Command+Shift+Delete",
-  "Command+Shift+Q",
-  "Command+B",
-  "Command+I",
-  "Command+U",
-  "Command+Shift+T",
-  "Command+=",
-  "Command+-",
-  "Command+Alt+F",
-  "Command+Shift+F",
-  "Fn+F11",
-  "Fn+F12",
-] as const;
 
 const WINDOWS_RESERVED_SHORTCUTS = [
   "Control+C",
@@ -172,121 +122,13 @@ const WINDOWS_RESERVED_SHORTCUTS = [
   "Super+Down",
 ] as const;
 
-const LINUX_RESERVED_SHORTCUTS = [
-  "Control+C",
-  "Control+V",
-  "Control+X",
-  "Control+Z",
-  "Control+Y",
-  "Control+R",
-  "Control+A",
-  "Control+F",
-  "Control+G",
-  "Control+O",
-  "Control+S",
-  "Control+P",
-  "Control+N",
-  "Control+T",
-  "Control+W",
-  "Control+Q",
-  "Control+H",
-  "Control+L",
-  "Control+Home",
-  "Control+End",
-  "Control+Backspace",
-  "Control+Delete",
-  "Control+Shift+T",
-  "Control+Shift+Q",
-  "Control+=",
-  "Control+-",
-  "Control+Alt+T",
-  "Control+Alt+Delete",
-  "Control+Alt+L",
-  "Control+Alt+Esc",
-  "Control+Alt+Left",
-  "Control+Alt+Right",
-  "Control+Alt+Up",
-  "Control+Alt+Down",
-  "Control+Alt+D",
-  "Control+Alt+S",
-  "Control+Alt+Tab",
-  "Alt+Tab",
-  "Alt+Shift+Tab",
-  "Alt+F1",
-  "Alt+F2",
-  "Alt+F4",
-  "Alt+F7",
-  "Alt+F8",
-  "Alt+F9",
-  "Alt+F10",
-  "Alt+Space",
-  "Alt+Left",
-  "Alt+Right",
-  "Alt+PrintScreen",
-  "Super",
-  "Super+A",
-  "Super+D",
-  "Super+L",
-  "Super+S",
-  "Super+M",
-  "Super+Tab",
-  "Super+Space",
-  "Super+Left",
-  "Super+Right",
-  "Super+Up",
-  "Super+Down",
-  "Super+Shift+Left",
-  "Super+Shift+Right",
-  "Super+Shift+Up",
-  "Super+Shift+Down",
-  "Super+PageUp",
-  "Super+PageDown",
-  "Super+Home",
-  "Super+End",
-  "F1",
-  "F5",
-  "F11",
-  "PrintScreen",
-  "Shift+PrintScreen",
-  "Super+PrintScreen",
-] as const;
 
-const MAC_EXAMPLES = [
-  "Control+Shift+K",
-  "Alt+F7",
-  "Command+Shift+9",
-  "Control+Space",
-  "Control+Alt+M",
-  "Shift+F9",
-] as const;
-
-const WINDOWS_EXAMPLES = [
-  "Control+Shift+K",
-  "Alt+F7",
-  "Control+Space",
-  "Control+Alt+M",
-  "Shift+F9",
-] as const;
-
-const LINUX_EXAMPLES = [
-  "Control+Super+K",
-  "Control+Shift+K",
-  "Super+Shift+R",
-  "Control+Shift+Space",
-  "Shift+F9",
-  "Control+Super+M",
-] as const;
-
-function normalizeModifier(part: string, platform: Platform): string | null {
+function normalizeModifier(part: string, _platform: Platform): string | null {
   const trimmed = part.replace(/\s+/g, "");
   const lowered = trimmed.toLowerCase();
 
   if (lowered === "commandorcontrol" || lowered === "cmdorctrl") {
-    return platform === "darwin" ? "Command" : "Control";
-  }
-
-  if (lowered === "command" || lowered === "cmd") {
-    return "Command";
+    return "Control";
   }
 
   if (lowered === "control" || lowered === "ctrl") {
@@ -302,7 +144,7 @@ function normalizeModifier(part: string, platform: Platform): string | null {
   }
 
   if (lowered === "super" || lowered === "win" || lowered === "meta") {
-    return platform === "darwin" ? "Command" : "Super";
+    return "Super";
   }
 
   if (lowered === "fn") {
@@ -314,12 +156,10 @@ function normalizeModifier(part: string, platform: Platform): string | null {
   if (isRightSideModifier(part)) {
     // Return a normalized form but mark it as a modifier
     if (lowered.includes("control") || lowered.includes("ctrl")) return "RightControl";
-    if (lowered.includes("alt") || lowered.includes("option"))
-      return platform === "darwin" ? "RightOption" : "RightAlt";
+    if (lowered.includes("alt") || lowered.includes("option")) return "RightAlt";
     if (lowered.includes("shift")) return "RightShift";
-    if (lowered.includes("command") || lowered.includes("cmd")) return "RightCommand";
     if (lowered.includes("super") || lowered.includes("meta") || lowered.includes("win")) {
-      return platform === "darwin" ? "RightCommand" : "RightSuper";
+      return "RightSuper";
     }
   }
 
@@ -430,30 +270,12 @@ export function normalizeHotkey(hotkey: string, platform: Platform): string {
   return [...modifiers, ...keys].join("+");
 }
 
-export function getReservedShortcuts(platform: Platform): readonly string[] {
-  switch (platform) {
-    case "darwin":
-      return MAC_RESERVED_SHORTCUTS;
-    case "win32":
-      return WINDOWS_RESERVED_SHORTCUTS;
-    case "linux":
-      return LINUX_RESERVED_SHORTCUTS;
-    default:
-      return [];
-  }
+export function getReservedShortcuts(_platform: Platform): readonly string[] {
+  return WINDOWS_RESERVED_SHORTCUTS;
 }
 
-export function getValidExamples(platform: Platform): readonly string[] {
-  switch (platform) {
-    case "darwin":
-      return MAC_EXAMPLES;
-    case "win32":
-      return WINDOWS_EXAMPLES;
-    case "linux":
-      return LINUX_EXAMPLES;
-    default:
-      return [];
-  }
+export function getValidExamples(_platform: Platform): readonly string[] {
+  return ["Control+Shift+K", "Alt+Space", "F8", "Control+Super", "Shift+F1"];
 }
 
 export function getValidationMessage(
@@ -501,32 +323,17 @@ export function validateHotkey(
   }
 
   if (isGlobeLikeHotkey(hotkey)) {
-    if (platform !== "darwin") {
-      return {
-        valid: false,
-        error: "The Globe/Fn key is only available on macOS.",
-        errorCode: "INVALID_GLOBE",
-      };
-    }
-    return { valid: true };
+    return {
+      valid: false,
+      error: "The Globe/Fn key is only available on macOS.",
+      errorCode: "INVALID_GLOBE",
+    };
   }
 
   if (isMouseButtonHotkey(hotkey)) {
-    if (platform !== "darwin") {
-      return {
-        valid: false,
-        error: "Mouse button hotkeys are currently supported on macOS only.",
-      };
-    }
-    return { valid: true };
-  }
-
-  // Mouse buttons cannot be combined with keyboard modifiers — they're handled
-  // by a separate native event tap, not Electron's globalShortcut.
-  if (/mousebutton[45]/i.test(hotkey)) {
     return {
       valid: false,
-      error: "Mouse button hotkeys cannot be combined with other keys.",
+      error: "Mouse button hotkeys are currently supported on macOS only.",
     };
   }
 
@@ -587,15 +394,6 @@ export function validateHotkey(
         valid: false,
         error:
           "Single modifier hotkeys must use the right-side key (e.g., RightOption). Or use two modifiers (e.g., Control+Alt).",
-        errorCode: "LEFT_MODIFIER_ONLY",
-      };
-    }
-    // Right-side single modifiers require native listeners (not available on Linux)
-    if (platform === "linux") {
-      return {
-        valid: false,
-        error:
-          "Right-side single modifier hotkeys are not supported on Linux. Use two modifiers (e.g., Control+Alt) instead.",
         errorCode: "LEFT_MODIFIER_ONLY",
       };
     }

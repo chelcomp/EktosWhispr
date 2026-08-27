@@ -337,10 +337,7 @@ export default function SettingsPage({
   const [ydotoolGuideKey, setYdotoolGuideKey] = useState<string | null>(null);
 
   const refreshYdotoolStatus = useCallback(async () => {
-    try {
-      const status = await window.electronAPI?.getYdotoolStatus?.();
-      if (status) setYdotoolStatus(status);
-    } catch {}
+    // getYdotoolStatus removed (Windows-only build); status no longer fetched
   }, []);
 
   useEffect(() => {
@@ -438,7 +435,7 @@ export default function SettingsPage({
   const { isUsingNativeShortcut, isUsingHyprland, hyprlandConfigStatus, supportsPushToTalk } =
     useHotkeyModeInfo("settings");
   const [effectiveDefaultHotkey, setEffectiveDefaultHotkey] = useState<string | null>(null);
-  const [linuxPttAvailable, setLinuxPttAvailable] = useState(true);
+
 
   const platform = getCachedPlatform();
 
@@ -446,10 +443,6 @@ export default function SettingsPage({
   const [autoStartLoading, setAutoStartLoading] = useState(true);
 
   useEffect(() => {
-    if (platform === "linux") {
-      setAutoStartLoading(false);
-      return;
-    }
     const loadAutoStart = async () => {
       if (window.electronAPI?.getAutoStartEnabled) {
         try {
@@ -558,19 +551,6 @@ export default function SettingsPage({
     loadEffectiveDefaultHotkey();
   }, []);
 
-  useEffect(() => {
-    const cleanup = window.electronAPI?.onLinuxPttPermissionDenied?.(() => {
-      setLinuxPttAvailable(false);
-      toast({
-        title: t("settingsPage.general.hotkey.linuxPttPermissionTitle"),
-        description: t("settingsPage.general.hotkey.linuxPttPermissionDescription"),
-        variant: "destructive",
-        duration: 15000,
-      });
-      setActivationMode("tap");
-    });
-    return () => cleanup?.();
-  }, [toast, t, setActivationMode]);
 
   const resetAccessibilityPermissions = () => {
     const message = t("settingsPage.permissions.resetAccessibility.description");
@@ -767,7 +747,7 @@ export default function SettingsPage({
             effectiveDefaultHotkey={effectiveDefaultHotkey}
             activationMode={activationMode}
             setActivationMode={setActivationMode}
-            linuxPttAvailable={linuxPttAvailable}
+
             voiceAgentKey={voiceAgentKey}
             commitAgentHotkey={commitAgentHotkey}
             setVoiceAgentKey={setVoiceAgentKey}

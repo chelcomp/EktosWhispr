@@ -12,12 +12,8 @@ const { promises: fsPromises } = require("fs");
  */
 class LlamaCppInstaller {
   constructor() {
-    // IMPORTANT: Do NOT call app.getPath() here!
-    // It can hang or fail before app.whenReady() in Electron 36+.
     this.installDir = null;
     this.binPath = null;
-    this.platform = process.platform;
-    this.arch = process.arch;
     this._initialized = false;
   }
 
@@ -45,7 +41,7 @@ class LlamaCppInstaller {
 
   getBinaryName() {
     // llama-server binary name
-    return this.platform === "win32" ? "llama-server.exe" : "llama-server";
+    return "llama-server.exe";
   }
 
   getInstalledBinaryPath() {
@@ -74,10 +70,9 @@ class LlamaCppInstaller {
 
   async getSystemBinaryPath() {
     return new Promise((resolve) => {
-      // Cross-platform command resolution
-      const checkCmd = this.platform === "win32" ? "where" : "which";
-      const binaryNames = this.platform === "win32" ? ["llama-server.exe"] : ["llama-server"];
-
+      // Windows-only command resolution
+      const checkCmd = "where";
+      const binaryNames = ["llama-server.exe"];
       let found = false;
       let remaining = binaryNames.length;
 
@@ -126,9 +121,7 @@ class LlamaCppInstaller {
       // The bundled binary is managed by LlamaServerManager
       return {
         success: false,
-        message:
-          "Please install llama.cpp manually using Homebrew (macOS): brew install llama.cpp, " +
-          "or ensure the llama-server binary is bundled with the app.",
+        message: "Please ensure the llama-server.exe binary is bundled with the app.",
       };
     } catch (error) {
       return {

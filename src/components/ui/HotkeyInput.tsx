@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { formatHotkeyLabel, isGlobeLikeHotkey } from "../../utils/hotkeys";
-import { getPlatform } from "../../utils/platform";
+
 
 const CODE_TO_KEY: Record<string, string> = {
   Backquote: "`",
@@ -160,23 +160,17 @@ function mapKeyboardEventToHotkey(e: KeyboardEvent): string | null {
   if (!baseKey) {
     return null;
   }
-
-  const platform = getPlatform();
   const modifiers: string[] = [];
 
-  if (platform === "darwin") {
-    if (e.ctrlKey) modifiers.push("Control");
-    if (e.metaKey) modifiers.push("Command");
-  } else {
-    if (e.ctrlKey) modifiers.push("Control");
-    if (e.metaKey) modifiers.push("Super");
-  }
+  if (e.ctrlKey) modifiers.push("Control");
+  if (e.metaKey) modifiers.push("Super");
 
   if (e.altKey) modifiers.push("Alt");
   if (e.shiftKey) modifiers.push("Shift");
 
   return modifiers.length > 0 ? [...modifiers, baseKey].join("+") : baseKey;
 }
+
 
 export interface HotkeyInputVariant {
   variant?: "default" | "hero";
@@ -214,11 +208,8 @@ export function HotkeyInput({
     alt?: string;
     shift?: string;
   }>({});
-  const platform = getPlatform();
-  const isMac = platform === "darwin";
-  const isWindows = platform === "win32";
-
   const MODIFIER_HOLD_THRESHOLD_MS = 200;
+
 
   const buildModifierOnlyHotkey = useCallback(
     (
@@ -228,8 +219,8 @@ export function HotkeyInput({
       // Check for right-side single modifier first
       const rightSidePressed: string[] = [];
       if (codes.ctrl === "ControlRight") rightSidePressed.push("RightControl");
-      if (codes.meta === "MetaRight") rightSidePressed.push(isMac ? "RightCommand" : "RightSuper");
-      if (codes.alt === "AltRight") rightSidePressed.push(isMac ? "RightOption" : "RightAlt");
+      if (codes.meta === "MetaRight") rightSidePressed.push("RightSuper");
+      if (codes.alt === "AltRight") rightSidePressed.push("RightAlt");
       if (codes.shift === "ShiftRight") rightSidePressed.push("RightShift");
 
       // If exactly one right-side modifier, allow it as single-key hotkey
@@ -245,7 +236,7 @@ export function HotkeyInput({
       // Otherwise require 2+ modifiers (existing logic)
       const parts: string[] = [];
       if (modifiers.ctrl) parts.push("Control");
-      if (modifiers.meta) parts.push(isMac ? "Command" : "Super");
+      if (modifiers.meta) parts.push("Super");
       if (modifiers.alt) parts.push("Alt");
       if (modifiers.shift) parts.push("Shift");
 
@@ -254,7 +245,7 @@ export function HotkeyInput({
       }
       return null;
     },
-    [isMac]
+    []
   );
 
   const clearFnHeld = useCallback(() => {
@@ -326,14 +317,9 @@ export function HotkeyInput({
       }
 
       const mods = new Set<string>();
-      if (isMac) {
-        if (e.metaKey) mods.add("Cmd");
-        if (e.ctrlKey) mods.add("Ctrl");
-      } else {
-        if (e.ctrlKey) mods.add("Ctrl");
-        if (e.metaKey) mods.add(isWindows ? "Win" : "Super");
-      }
-      if (e.altKey) mods.add(isMac ? "Option" : "Alt");
+      if (e.ctrlKey) mods.add("Ctrl");
+      if (e.metaKey) mods.add("Win");
+      if (e.altKey) mods.add("Alt");
       if (e.shiftKey) mods.add("Shift");
       if (fnHeldRef.current) mods.add("Fn");
       setActiveModifiers(mods);
@@ -351,7 +337,7 @@ export function HotkeyInput({
       }
       // If no base key, modifiers are held - don't finalize yet
     },
-    [disabled, isMac, isWindows, finalizeCapture]
+    [disabled, finalizeCapture]
   );
 
   const handleKeyUp = useCallback(
@@ -442,31 +428,7 @@ export function HotkeyInput({
     };
   }, []);
 
-  useEffect(() => {
-    if (!isCapturing || !isMac) return;
 
-    const disposeDown = window.electronAPI?.onGlobeKeyPressed?.(() => {
-      setValidationWarning(null);
-      setIsFnHeld(true);
-      fnHeldRef.current = true;
-      fnCapturedKeyRef.current = false;
-      setActiveModifiers((prev) => new Set([...prev, "Fn"]));
-    });
-
-    const disposeUp = window.electronAPI?.onGlobeKeyReleased?.(() => {
-      if (fnHeldRef.current && !fnCapturedKeyRef.current) {
-        finalizeCapture("GLOBE");
-      }
-      setIsFnHeld(false);
-      fnHeldRef.current = false;
-      fnCapturedKeyRef.current = false;
-    });
-
-    return () => {
-      disposeDown?.();
-      disposeUp?.();
-    };
-  }, [isCapturing, isMac, finalizeCapture]);
 
   const displayValue = formatHotkeyLabel(value);
   const isGlobe = isGlobeLikeHotkey(value);
@@ -551,7 +513,7 @@ export function HotkeyInput({
               </div>
             ) : (
               <span className="text-xs text-muted-foreground">
-                {isMac ? t("hotkeyInput.pressAnyKeyMac") : t("hotkeyInput.pressAnyKey")}
+                {t("hotkeyInput.pressAnyKey")}
               </span>
             )}
             {validationWarning && (
@@ -658,7 +620,7 @@ export function HotkeyInput({
                 </div>
               ) : (
                 <span className="text-xs text-muted-foreground">
-                  {isMac ? t("hotkeyInput.tryShortcutMac") : t("hotkeyInput.tryShortcut")}
+                  {t("hotkeyInput.tryShortcut")}
                 </span>
               )}
             </div>
