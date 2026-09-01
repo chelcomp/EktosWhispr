@@ -37,8 +37,7 @@ This spec makes both paths consistent and correct:
 3. The cleanup route sends **two** messages: `{ role: "system", content: resolvedSystem }`
    and `{ role: "user", content: resolvedUser }` where `resolvedUser` is the user template
    with `{{user-transcription}}` → the dictated text (wrapped in the template's own
-   `<user-transcription>` markup) and `{{screen-ocr}}` → the OCR'd screen text (wrapped in
-   a `<screen-ocr>` section). The system message never carries the transcription; the user
+   `<transcription>` markup). The system message never carries the transcription; the user
    message never carries system-template text.
 4. All chat providers use `config.userPrompt`/`ctx.getUserPrompt(...)` for the user message
    instead of raw `text` when no `systemPrompt` override exists (the cleanup path). The
@@ -49,11 +48,11 @@ system template supplies only system-message text, the user template only user-m
 text. Nothing is appended to either field beyond what its own template contains.
 
 **Practical impact**: cleanup requests now carry the transcription inside the user
-template's `<user-transcription>` wrapper as a proper user message, with a real system
-message. The default user template also wraps the OCR'd active-window text (when present)
-in a `<screen-ocr>` section via `{{screen-ocr}}`. Model-visible structure matches what the
-system template describes ("the speech inside `<user-transcription>`" — the reference in
-the system template now actually describes the user message).
+template's `<transcription>` wrapper as a proper user message, with a real system message.
+Model-visible text is the same for default templates; the structure matches what the model
+already expects ("clean the dictated speech located inside the `<transcription>` section" —
+the `<transcription>` reference in the system template now actually describes the user
+message).
 
 ## Problem / Goal
 
@@ -176,7 +175,7 @@ Agent route (`config.systemPrompt` set): unchanged —
 
 1. Dictate a phrase with a non-empty Custom Dictionary; confirm via debug logs that the
    cleanup request has a `system` message (resolved system template, no transcription) and a
-   `user` message (user template with the transcription inside its `<user-transcription>`
+   `user` message (user template with the transcription inside its `<transcription>`
    wrapper), for both a provider (e.g. OpenAI-compatible) and the groq/lan path through
    `callChatCompletionsApi`.
 2. Save a custom cleanup *user* template (PromptStudio) and confirm the saved text (with its

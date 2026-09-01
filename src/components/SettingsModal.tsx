@@ -7,6 +7,7 @@ import {
   FolderOpen,
   Cpu,
   Settings2,
+  Keyboard,
 } from "lucide-react";
 import SidebarModal, { type SidebarItem } from "./ui/SidebarModal";
 import SettingsPage, { SettingsSectionType } from "./SettingsPage";
@@ -17,9 +18,9 @@ export type { SettingsSectionType };
 // intelligence, agentMode) — they now collapse into two: speechToText + llms.
 // Legacy deep-links land on the matching sub-tab via LEGACY_SUB_TAB.
 const SECTION_ALIASES: Record<string, SettingsSectionType> = {
-  // Map old 7 sections to new 6 sections
-  general: "input",
-  hotkeys: "input",
+  // Map old 7 sections to new 7 sections (input split into 2)
+  general: "inputMicrophone",
+  hotkeys: "inputHotkeys",
   speechToText: "transcription",
   llms: "aiProcessing",
   localModel: "models",
@@ -40,8 +41,7 @@ const SECTION_ALIASES: Record<string, SettingsSectionType> = {
 };
 
 const LEGACY_SUB_TAB: Record<string, string> = {
-  // New 6-section sub-tabs
-  input: "microphone",
+  // New 7-section sub-tabs
   transcription: "dictation",
   uploadTranscription: "upload",
   aiProcessing: "dictationCleanup",
@@ -62,10 +62,17 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
   const sidebarItems: SidebarItem<SettingsSectionType>[] = useMemo(
     () => [
       {
-        id: "input",
-        label: t("settingsModal.sections.input.label"),
+        id: "inputMicrophone",
+        label: t("settingsModal.sections.inputMicrophone.label"),
         icon: Mic,
-        description: t("settingsModal.sections.input.description"),
+        description: t("settingsModal.sections.inputMicrophone.description"),
+        group: t("settingsModal.groups.input"),
+      },
+      {
+        id: "inputHotkeys",
+        label: t("settingsModal.sections.inputHotkeys.label"),
+        icon: Keyboard,
+        description: t("settingsModal.sections.inputHotkeys.description"),
         group: t("settingsModal.groups.input"),
       },
       {
@@ -73,7 +80,7 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
         label: t("settingsModal.sections.transcription.label"),
         icon: AudioWaveform,
         description: t("settingsModal.sections.transcription.description"),
-        group: t("settingsModal.groups.transcription"),
+        group: t("settingsModal.groups.aiProcessing"),
       },
       {
         id: "aiProcessing",
@@ -83,18 +90,18 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
         group: t("settingsModal.groups.aiProcessing"),
       },
       {
+        id: "models",
+        label: t("settingsModal.sections.models.label"),
+        icon: Cpu,
+        description: t("settingsModal.sections.models.description"),
+        group: t("settingsModal.groups.aiProcessing"),
+      },
+      {
         id: "storage",
         label: t("settingsModal.sections.storage.label"),
         icon: FolderOpen,
         description: t("settingsModal.sections.storage.description"),
         group: t("settingsModal.groups.storage"),
-      },
-      {
-        id: "models",
-        label: t("settingsModal.sections.models.label"),
-        icon: Cpu,
-        description: t("settingsModal.sections.models.description"),
-        group: t("settingsModal.groups.models"),
       },
       {
         id: "system",
@@ -108,9 +115,9 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
   );
 
   const resolveSection = (section: string | undefined): SettingsSectionType => {
-    if (!section) return "input";
+    if (!section) return "inputMicrophone";
     const resolved = (SECTION_ALIASES[section] ?? section) as SettingsSectionType;
-    if (!["input", "transcription", "aiProcessing", "storage", "models", "system"].includes(resolved)) return "input";
+    if (!["inputMicrophone", "inputHotkeys", "transcription", "aiProcessing", "storage", "models", "system"].includes(resolved)) return "inputMicrophone";
     return resolved;
   };
 

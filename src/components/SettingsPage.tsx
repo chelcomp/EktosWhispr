@@ -26,7 +26,7 @@ import ModelsSection from "./settings/sections/ModelsSection";
 import SystemSection from "./settings/sections/SystemSection";
 
 export type SettingsSectionType =
-  "input" | "transcription" | "aiProcessing" | "storage" | "models" | "system";
+  "inputMicrophone" | "inputHotkeys" | "transcription" | "aiProcessing" | "storage" | "models" | "system";
 
 interface SettingsPageProps {
   activeSection?: SettingsSectionType;

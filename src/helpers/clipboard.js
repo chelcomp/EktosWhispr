@@ -4,8 +4,19 @@ const { killProcess } = require("../utils/process");
 const path = require("path");
 const fs = require("fs");
 const debugLogger = require("./debugLogger");
-
 const CACHE_TTL_MS = 30000;
+
+// Windows-only paste timing constants. Staggered so each strategy has its
+// own settle window before the post-paste clipboard restore fires.
+const PASTE_DELAYS = {
+  win32_fast: 10,
+  win32_nircmd: 30,
+  win32_pwsh: 40,
+};
+const RESTORE_DELAYS = {
+  win32_nircmd: 500,
+  win32_pwsh: 500,
+};
 
 class ClipboardManager {
   constructor() {
